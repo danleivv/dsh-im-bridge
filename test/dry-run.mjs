@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 /**
  * Dry run for dsh-im-bridge — no DSH required.
  *
@@ -18,7 +19,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node
 import { join } from 'node:path'
 import { apply } from '../lib/index.js'
 
-const ROOT = 'D:/dsh-im-bridge/.test-root'
+const ROOT = fileURLToPath(new URL('../.test-root', import.meta.url))
 const SESSION = 'session-fake-live'
 const OTHER = 'session-fake-other'
 /** Allowlisted but NOT live: forces the plugin down its resume() path. */
@@ -306,7 +307,7 @@ async function main() {
 
   console.log('\n[4f] 有 composition 时 resume 必须带上 setup（32 个工具全靠它）')
   {
-    const root2 = 'D:/dsh-im-bridge/.test-root2'
+    const root2 = fileURLToPath(new URL('../.test-root2', import.meta.url))
     const mounted = []
     const fake2 = fakeCtx({
       services: {

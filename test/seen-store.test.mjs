@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 /**
  * seen-store tests — durable de-duplication.
  *
@@ -12,7 +13,7 @@ import { rmSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createFileSeenStore } from '../lib/seen-store.mjs'
 
-const ROOT = 'D:/dsh-im-bridge/.test-seen'
+const ROOT = fileURLToPath(new URL('../.test-seen', import.meta.url))
 const FILE = join(ROOT, 'gateway-seen.json')
 
 let failures = 0
