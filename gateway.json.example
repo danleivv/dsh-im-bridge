@@ -1,0 +1,39 @@
+{
+  "_comment": "Copy to ~/.cc-dsh-bridge/gateway.json and fill in appId/appSecret. Env overrides: FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_DOMAIN / DSH_BRIDGE_PORT. Keep this file OUTSIDE any repo — it holds a secret.",
+
+  "_mode": "enabled:true means the PLUGIN owns the Feishu long connection (native mode). One Feishu app allows only one consumer, so do not also run bin/dsh-feishu-gateway.mjs.",
+  "enabled": true,
+
+  "appId": "cli_xxxxxxxxxxxxxxxx",
+  "appSecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "domain": "feishu",
+
+  "_plugin": "Loopback port of the plugin inside the DSH Host (used by sidecar mode and by tools).",
+  "pluginPort": 9811,
+
+  "_routing": "Which DSH session a chat drives is decided by the plugin's config.json sessionKeys: 'feishu:<chat_id>:<open_id>' -> session id. Until a chat is pinned there, defaultSession is used and the exact key is logged.",
+  "defaultSession": "session-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+
+  "_allow": "open_id is APP-SCOPED, so a brand-new app cannot be pre-wired. Leave allowUsers empty to auto-pin the FIRST sender (logged loudly), then paste that id here.",
+  "allowUsers": [],
+  "autoPinFirstUser": true,
+
+  "_behavior": "busyBehavior 'steer' = a message arriving while a turn runs is injected INTO that turn (this is what cc-connect cannot do). 'queue' falls back to a normal next-turn message.",
+  "busyBehavior": "steer",
+  "statusPrefix": "?",
+  "_prefixes": "deferPrefix queues the message until the running turn ends; steerPrefix (empty by default) would force an insert.",
+  "deferPrefix": "#",
+  "deferAckText": "已收到，等当前这一轮结束后发送",
+  "steerPrefix": "",
+  "steerAckText": "已接收消息，当前工具调用结束后响应",
+
+  "_format": "card = Feishu card 2.0 (renders bold/tables/code) for replies that contain markdown, plain text otherwise, with automatic text fallback if a card is rejected. text = strip markdown and send plain text.",
+  "replyFormat": "card",
+  "cardVersion": "2.0",
+  "cardTitle": "",
+
+  "_ack": "Message lifecycle reactions, sent straight from the gateway so the phone sees progress during long turns. Set to \"\" to disable any of them.",
+  "ackEmoji": "Get",
+  "onItEmoji": "OnIt",
+  "doneEmoji": "Done"
+}

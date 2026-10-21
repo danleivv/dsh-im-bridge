@@ -1,0 +1,55 @@
+{
+  "name": "cc-dsh-bridge",
+  "version": "0.1.0",
+  "description": "Bring the same live DeepSeek Harness session to Feishu: receive, steer mid-turn, and send files back.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/",
+    "bin/",
+    "tools/",
+    "test/",
+    "docs/",
+    "cordis.patch.yml",
+    "gateway.json.example",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.en.md"
+  ],
+  "bin": {
+    "dsh-feishu-gateway": "bin/dsh-feishu-gateway.mjs",
+    "dsh-feishu-send-file": "tools/send-media.mjs"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "scripts": {
+    "test": "node test/dry-run.mjs && node test/gateway-core.test.mjs && node test/feishu-parse.test.mjs && node test/feishu-payload.test.mjs && node test/markdown.test.mjs && node test/seen-store.test.mjs && node test/config-tools.test.mjs && node test/feishu-registration.test.mjs && node test/feishu-media.test.mjs && node test/feishu-tool.test.mjs",
+    "health": "node tools/bridge-health.mjs",
+    "gateway": "node bin/dsh-feishu-gateway.mjs"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "cordis",
+    "feishu",
+    "lark",
+    "bridge",
+    "agent"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.76.0"
+  }
+}

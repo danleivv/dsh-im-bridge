@@ -1,0 +1,19 @@
+[
+  {
+    "insert": [
+      {
+        "id": "cc-dsh-bridge",
+        "name": "cc-dsh-bridge",
+        "config": {
+          "ipc": {
+            "enabled": true,
+            "host": "127.0.0.1",
+            "port": 9811
+          },
+          "captureReplies": false,
+          "captureSessions": "all"
+        }
+      }
+    ]
+  }
+]

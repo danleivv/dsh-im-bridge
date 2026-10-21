@@ -1,0 +1,8 @@
+node_modules/
+.ref*/
+.test-*/
+*.bak
+*.log
+gateway.json
+config.json
+package-lock.json
