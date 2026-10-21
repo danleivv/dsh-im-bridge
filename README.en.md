@@ -1,4 +1,4 @@
-# cc-dsh-bridge
+# dsh-im-bridge
 
 [中文](README.md) | [English](README.en.md)
 
@@ -79,7 +79,7 @@ It is a DSH plugin and lives inside DSH. No daemon, no startup task, no separate
 DSH sidebar → **Plugins** → **Installed** → **Install**, then enter:
 
 ```
-github:<owner>/cc-dsh-bridge
+github:danleivv/dsh-im-bridge
 ```
 
 Confirm the trust prompt and restart DSH when asked.
@@ -123,7 +123,7 @@ Replies arrive as cards, with bold text, tables and code blocks rendering proper
 
 ## Configuration (once)
 
-Both files live in `~/.cc-dsh-bridge/`:
+Both files live in `~/.dsh-im-bridge/`:
 
 | File | Purpose | When it is read |
 |---|---|---|
@@ -179,7 +179,7 @@ No. One app is one long connection and one session; use one app per session.
 The first sender is bound automatically as the only allowed user; everyone else is ignored.
 
 **Where are the credentials?**
-`~/.cc-dsh-bridge/gateway.json`, readable only by your user account. Neither the repository nor the
+`~/.dsh-im-bridge/gateway.json`, readable only by your user account. Neither the repository nor the
 published package contains credentials.
 
 **Do I need to install anything else?**

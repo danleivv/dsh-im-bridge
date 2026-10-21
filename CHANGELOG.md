@@ -29,7 +29,7 @@
   并校验大小上限。
 - 原生工具 `feishu_send_file`：agent 直接调用即可把文件发到它所在会话对应的聊天，
   不需要命令行、路径或 PATH（命令行入口仍然保留给脚本与终端）。
-- 稳定命令入口：插件启动时把 `dsh-feishu-send-file` 等命令生成到 `~/.cc-dsh-bridge/bin`，
+- 稳定命令入口：插件启动时把 `dsh-feishu-send-file` 等命令生成到 `~/.dsh-im-bridge/bin`，
   指向当前安装位置，升级后自动刷新；不依赖调用时的工作目录。
 - 工具：`bridge-health`、`session-route`、`repair-session`、`ipc-selftest`、`steer-probe`、
   `send-test-card`、`chat-log`、`send-media`。

@@ -7,11 +7,11 @@
  * session`). That makes real mid-turn input impossible. Owning the Feishu side lets
  * us decide per message: run a turn, or steer INTO the running one.
  *
- *   Feishu ──WS──> this process ──loopback IPC──> cc-dsh-bridge (inside the Host)
+ *   Feishu ──WS──> this process ──loopback IPC──> dsh-im-bridge (inside the Host)
  *                                                        │
  *                                                        └─> the live DSH session
  *
- * Config: ~/.cc-dsh-bridge/gateway.json (see DEFAULTS below), or env overrides
+ * Config: ~/.dsh-im-bridge/gateway.json (see DEFAULTS below), or env overrides
  *   FEISHU_APP_ID, FEISHU_APP_SECRET, FEISHU_DOMAIN, DSH_BRIDGE_PORT
  *
  * Run: node bin/dsh-feishu-gateway.mjs
@@ -24,7 +24,7 @@ import { createGateway } from '../lib/gateway-core.mjs'
 import { createFeishuTransport } from '../lib/feishu-transport.mjs'
 import { createFileSeenStore } from '../lib/seen-store.mjs'
 
-const ROOT = join(homedir(), '.cc-dsh-bridge')
+const ROOT = join(homedir(), '.dsh-im-bridge')
 const CONFIG_FILE = join(ROOT, 'gateway.json')
 const LOG_FILE = join(ROOT, 'gateway.log')
 

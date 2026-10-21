@@ -3,7 +3,7 @@
  * session-route.mjs — print the provider/model a persisted session last used.
  *
  * Why: resuming a session that is NOT live in the desktop Host requires an
- * explicit route (`agentOptions` in ~/.cc-dsh-bridge/config.json). Without it the
+ * explicit route (`agentOptions` in ~/.dsh-im-bridge/config.json). Without it the
  * resumed agent fails every turn with
  *
  *   prompt variable "{{model}}" has no value (section "deployment:persona-prefix")

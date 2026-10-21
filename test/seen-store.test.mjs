@@ -12,7 +12,7 @@ import { rmSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createFileSeenStore } from '../lib/seen-store.mjs'
 
-const ROOT = 'D:/cc-dsh-bridge/.test-seen'
+const ROOT = 'D:/dsh-im-bridge/.test-seen'
 const FILE = join(ROOT, 'gateway-seen.json')
 
 let failures = 0

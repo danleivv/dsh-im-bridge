@@ -12,7 +12,7 @@
  *   node tools/send-test-card.mjs --chat oc_xxx --only card
  *   node tools/send-test-card.mjs --chat oc_xxx --card-version 1.0
  *
- * Credentials come from ~/.cc-dsh-bridge/gateway.json (never printed).
+ * Credentials come from ~/.dsh-im-bridge/gateway.json (never printed).
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -36,11 +36,11 @@ const only = flag('only', null)
 const replyTo = flag('reply-to', null)
 // 默认跟随 gateway.json 的实际配置：否则测的不是线上那条路径。
 const configured = (() => {
-  try { return JSON.parse(readFileSync(join(homedir(), '.cc-dsh-bridge', 'gateway.json'), 'utf8')) } catch { return {} }
+  try { return JSON.parse(readFileSync(join(homedir(), '.dsh-im-bridge', 'gateway.json'), 'utf8')) } catch { return {} }
 })()
 const cardVersion = flag('card-version', configured.cardVersion ?? '1.0')
 
-const config = JSON.parse(readFileSync(join(homedir(), '.cc-dsh-bridge', 'gateway.json'), 'utf8'))
+const config = JSON.parse(readFileSync(join(homedir(), '.dsh-im-bridge', 'gateway.json'), 'utf8'))
 const client = new Lark.Client({
   appId: config.appId,
   appSecret: config.appSecret,

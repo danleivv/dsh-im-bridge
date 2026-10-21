@@ -8,7 +8,7 @@ import { connect } from 'node:net'
 
 const PORT = Number(process.env.DSH_BRIDGE_PORT || 9811)
 const KEY = process.env.DSH_BRIDGE_KEY ?? ''
-const TEXT = '【桥接自检】这条消息由 cc-dsh-bridge 插件通过本地 IPC 注入。请只回复：bridge-ok'
+const TEXT = '【桥接自检】这条消息由 dsh-im-bridge 插件通过本地 IPC 注入。请只回复：bridge-ok'
 const sendPrompt = !process.argv.includes('--no-prompt')
 
 const socket = connect(PORT, '127.0.0.1')

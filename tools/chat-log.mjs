@@ -29,7 +29,7 @@ if (!chatId) {
 const limit = Number(flag('limit') ?? 10)
 const full = args.includes('--full')
 
-const config = JSON.parse(readFileSync(join(homedir(), '.cc-dsh-bridge', 'gateway.json'), 'utf8'))
+const config = JSON.parse(readFileSync(join(homedir(), '.dsh-im-bridge', 'gateway.json'), 'utf8'))
 const client = new Lark.Client({
   appId: config.appId ?? process.env.FEISHU_APP_ID,
   appSecret: config.appSecret ?? process.env.FEISHU_APP_SECRET,

@@ -89,11 +89,11 @@
 ```json
 {
   "dependencies": {
-    "cc-dsh-bridge": "link:/path/to/cc-dsh-bridge"
+    "dsh-im-bridge": "link:/path/to/dsh-im-bridge"
   },
   "dsh": {
     "profile": {
-      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "cc-dsh-bridge"]
+      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-im-bridge"]
     }
   }
 }

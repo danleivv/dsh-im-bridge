@@ -20,7 +20,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 
-const ROOT = join(homedir(), '.cc-dsh-bridge')
+const ROOT = join(homedir(), '.dsh-im-bridge')
 const CONFIG = join(ROOT, 'config.json')
 
 const args = process.argv.slice(2)
@@ -165,7 +165,7 @@ async function main() {
   }
 
   // 3) 长连接本身：插件是否连上飞书
-  const gatewayFile = join(homedir(), '.cc-dsh-bridge', 'gateway.json')
+  const gatewayFile = join(homedir(), '.dsh-im-bridge', 'gateway.json')
   let gatewayConfig = {}
   try {
     gatewayConfig = JSON.parse(readFileSync(gatewayFile, 'utf8'))

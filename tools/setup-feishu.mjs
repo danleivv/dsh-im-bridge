@@ -6,7 +6,7 @@
  * Why this exists: the app secret is a bearer credential for the bot. Typing it into
  * an agent conversation (or a shell command) copies it into transcripts, logs and
  * history. This tool reads it from a hidden prompt (or from the environment) and
- * writes ~/.cc-dsh-bridge/gateway.json with permissions limited to the current user.
+ * writes ~/.dsh-im-bridge/gateway.json with permissions limited to the current user.
  *
  * Usage:
  *   node tools/setup-feishu.mjs              # interactive: prompts, input hidden
@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 
-const ROOT = join(homedir(), '.cc-dsh-bridge')
+const ROOT = join(homedir(), '.dsh-im-bridge')
 const FILE = join(ROOT, 'gateway.json')
 const args = process.argv.slice(2)
 const fromEnv = args.includes('--from-env')

@@ -5,7 +5,7 @@
  * mapping, the injection and the turn/watermark bookkeeping are all real. It runs
  * against the PILOT session only — never the production one.
  *
- * Requires in ~/.cc-dsh-bridge/config.json:
+ * Requires in ~/.dsh-im-bridge/config.json:
  *   allowSessions: [ ...includes the pilot session... ]
  *   sessionKeys:   { "feishu:oc_gateway_test:ou_gateway_test": "<pilot session id>" }
  *

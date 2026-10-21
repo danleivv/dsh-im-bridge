@@ -4,7 +4,7 @@
  *
  * 流程：向飞书申请一个设备码 → 打印授权链接（可用手机飞书扫码或直接打开）→
  * 你在飞书里确认创建应用 → 本工具轮询拿到 app_id / app_secret → 写入
- * ~/.cc-dsh-bridge/gateway.json（权限收紧，密钥不回显）。
+ * ~/.dsh-im-bridge/gateway.json（权限收紧，密钥不回显）。
  *
  * 密钥全程不经过对话、命令行参数与 shell 历史。
  *
@@ -24,7 +24,7 @@ const flag = (name, fallback = undefined) => {
 }
 
 const domain = args.includes('--lark') ? LARK_DOMAIN : FEISHU_DOMAIN
-const name = flag('name', 'cc-dsh-bridge')
+const name = flag('name', 'dsh-im-bridge')
 const write = !args.includes('--no-write')
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))

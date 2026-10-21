@@ -1,4 +1,4 @@
-# cc-dsh-bridge
+# dsh-im-bridge
 
 [中文](README.md) | [English](README.en.md)
 
@@ -75,7 +75,7 @@ dsh-feishu-send-file --file 成片.mp4 --cover 封面.jpg
 DSH 侧栏 → **插件** → **已安装** → **安装**，填：
 
 ```
-github:<owner>/cc-dsh-bridge
+github:danleivv/dsh-im-bridge
 ```
 
 确认信任提示，按提示重启 DSH。
@@ -117,7 +117,7 @@ dsh-feishu-setup
 
 ## 配置（一次就好）
 
-两个文件都在 `~/.cc-dsh-bridge/`：
+两个文件都在 `~/.dsh-im-bridge/`：
 
 | 文件 | 作用 | 什么时候读 |
 |---|---|---|
@@ -172,7 +172,7 @@ export FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 第一个发消息的人会被自动绑定为唯一使用者，之后其他人的消息直接忽略。
 
 **密钥存在哪？**
-`~/.cc-dsh-bridge/gateway.json`，权限收紧到当前用户；仓库和发布包里都没有凭据。
+`~/.dsh-im-bridge/gateway.json`，权限收紧到当前用户；仓库和发布包里都没有凭据。
 
 **要装别的软件吗？**
 不用。这个插件自己连飞书。

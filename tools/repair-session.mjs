@@ -27,7 +27,7 @@
  *   repaired file.
  *
  * Every rewritten file is backed up first to
- *   ~/.cc-dsh-bridge/backup/<session-dir>.<timestamp>.jsonl.zstd
+ *   ~/.dsh-im-bridge/backup/<session-dir>.<timestamp>.jsonl.zstd
  * and restored automatically if the post-write verification fails.
  */
 import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync, copyFileSync } from 'node:fs'
@@ -38,7 +38,7 @@ import { randomUUID } from 'node:crypto'
 
 const MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd])
 const sessionsRoot = join(homedir(), '.dsh', 'sessions')
-const backupDir = join(homedir(), '.cc-dsh-bridge', 'backup')
+const backupDir = join(homedir(), '.dsh-im-bridge', 'backup')
 const dryRun = process.argv.includes('--dry-run')
 const fileArgIndex = process.argv.indexOf('--file')
 const onlyFile = fileArgIndex >= 0 ? process.argv[fileArgIndex + 1] : undefined

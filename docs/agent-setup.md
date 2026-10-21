@@ -12,7 +12,7 @@
 1. **不要让用户把 `app_secret` 贴进对话。** 对话内容会进入会话记录、日志、可能的备份。
 2. **不要让密钥出现在命令行参数里**（如 `--secret xxx`），它会进 shell 历史。
 3. **不要自己替用户创建飞书应用**，也不要索取用户的飞书账号密码。
-4. **不要把 `app_secret` 写进仓库内的文件**。凭据只能落在 `~/.cc-dsh-bridge/gateway.json`。
+4. **不要把 `app_secret` 写进仓库内的文件**。凭据只能落在 `~/.dsh-im-bridge/gateway.json`。
 5. **同一个飞书应用只允许一个长连接消费者**。如果有别的程序也在连这个应用，必须二选一，
    否则事件会被两边分摊，各收一半。
 
@@ -42,7 +42,7 @@ node tools/setup-feishu.mjs        # 交互式：输入不回显，自动收紧�
 2. 工具会打印一个 `https://open.feishu.cn/page/launcher?user_code=XXXX-XXXX` 形式的链接，
    把它原样交给用户，让用户用手机飞书扫码或直接打开，按提示确认创建应用。
 
-3. 等待用户在飞书里确认。工具会轮询，拿到凭据后自动写入 `~/.cc-dsh-bridge/gateway.json`
+3. 等待用户在飞书里确认。工具会轮询，拿到凭据后自动写入 `~/.dsh-im-bridge/gateway.json`
    （权限收紧），并打印掩码后的结果。**你不需要、也不应该索取 `app_secret`。**
 
 4. 国际版账号加 `--lark`。若用户扫错区域，工具会自动切换域名。
@@ -111,7 +111,7 @@ node tools/setup-feishu.mjs
 ```
 
 然后按提示输入 `app_id` 与 `app_secret`（输入不回显，只显示 `*`）。工具会自动：
-写入 `~/.cc-dsh-bridge/gateway.json`、把文件权限收紧到当前用户、并把 `enabled` 置为 `true`。
+写入 `~/.dsh-im-bridge/gateway.json`、把文件权限收紧到当前用户、并把 `enabled` 置为 `true`。
 
 用户若想改用环境变量，可自行设置后跳过此步。
 
@@ -156,4 +156,4 @@ pin it with: "sessionKeys": { "feishu:oc_xxx:ou_yyy": "<会话 id>" }
 - 如果 `app_secret` 曾经出现在聊天、截图或日志里，建议在开放平台重置一次，然后用
   `setup-feishu.mjs` 重新写入。
 - 桌面 App 必须开着，插件住在它的进程里。
-- 想清理时删掉 `~/.cc-dsh-bridge/gateway.json` 并把 `enabled` 置为 `false` 即可断开。
+- 想清理时删掉 `~/.dsh-im-bridge/gateway.json` 并把 `enabled` 置为 `false` 即可断开。

@@ -1,5 +1,5 @@
 /**
- * Dry run for cc-dsh-bridge — no DSH required.
+ * Dry run for dsh-im-bridge — no DSH required.
  *
  * Covers, with a fake `ctx`:
  *   1. downlink   : an outbox job file becomes a real injected user message
@@ -18,7 +18,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node
 import { join } from 'node:path'
 import { apply } from '../lib/index.js'
 
-const ROOT = 'D:/cc-dsh-bridge/.test-root'
+const ROOT = 'D:/dsh-im-bridge/.test-root'
 const SESSION = 'session-fake-live'
 const OTHER = 'session-fake-other'
 /** Allowlisted but NOT live: forces the plugin down its resume() path. */
@@ -306,7 +306,7 @@ async function main() {
 
   console.log('\n[4f] 有 composition 时 resume 必须带上 setup（32 个工具全靠它）')
   {
-    const root2 = 'D:/cc-dsh-bridge/.test-root2'
+    const root2 = 'D:/dsh-im-bridge/.test-root2'
     const mounted = []
     const fake2 = fakeCtx({
       services: {

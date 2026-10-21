@@ -19,7 +19,7 @@ import { homedir } from 'node:os'
 import * as Lark from '@larksuiteoapi/node-sdk'
 import { createMediaSender } from '../lib/feishu-media.mjs'
 
-const ROOT = join(homedir(), '.cc-dsh-bridge')
+const ROOT = join(homedir(), '.dsh-im-bridge')
 const args = process.argv.slice(2)
 
 function flag(name) {

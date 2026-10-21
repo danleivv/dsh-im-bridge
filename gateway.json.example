@@ -1,5 +1,5 @@
 {
-  "_comment": "Copy to ~/.cc-dsh-bridge/gateway.json and fill in appId/appSecret. Env overrides: FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_DOMAIN / DSH_BRIDGE_PORT. Keep this file OUTSIDE any repo — it holds a secret.",
+  "_comment": "Copy to ~/.dsh-im-bridge/gateway.json and fill in appId/appSecret. Env overrides: FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_DOMAIN / DSH_BRIDGE_PORT. Keep this file OUTSIDE any repo — it holds a secret.",
 
   "_mode": "enabled:true means the PLUGIN owns the Feishu long connection (native mode). One Feishu app allows only one consumer, so do not also run bin/dsh-feishu-gateway.mjs.",
   "enabled": true,

@@ -2,8 +2,8 @@
   {
     "insert": [
       {
-        "id": "cc-dsh-bridge",
-        "name": "cc-dsh-bridge",
+        "id": "dsh-im-bridge",
+        "name": "dsh-im-bridge",
         "config": {
           "ipc": {
             "enabled": true,

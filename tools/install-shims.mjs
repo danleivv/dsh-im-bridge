@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * install-shims.mjs — 在 ~/.cc-dsh-bridge/bin 里生成稳定的命令入口。
+ * install-shims.mjs — 在 ~/.dsh-im-bridge/bin 里生成稳定的命令入口。
  *
  * 解决什么问题：插件装在 DSH 的 profile 目录里，路径随安装位置变化；而 agent 的
  * 当前目录通常是某个项目。让 agent 记绝对路径既丑又会失效。
@@ -20,7 +20,7 @@ import { homedir } from 'node:os'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const PACKAGE_ROOT = resolve(HERE, '..')
-const BIN_DIR = join(homedir(), '.cc-dsh-bridge', 'bin')
+const BIN_DIR = join(homedir(), '.dsh-im-bridge', 'bin')
 
 /** 要暴露的命令 → 包内脚本。 */
 export const SHIMS = {

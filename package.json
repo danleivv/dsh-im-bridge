@@ -1,5 +1,5 @@
 {
-  "name": "cc-dsh-bridge",
+  "name": "dsh-im-bridge",
   "version": "0.1.0",
   "description": "Bring the same live DeepSeek Harness session to Feishu: receive, steer mid-turn, and send files back.",
   "type": "module",
@@ -51,5 +51,14 @@
   },
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.76.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danleivv/dsh-im-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danleivv/dsh-im-bridge/issues"
+  },
+  "homepage": "https://github.com/danleivv/dsh-im-bridge#readme",
+  "author": "danlei"
 }
