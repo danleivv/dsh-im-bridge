@@ -116,6 +116,7 @@ The first message makes the plugin log the mapping to add to your config (see be
 | `#summarise when this finishes` | queued; the running turn is left alone |
 | `?status` / `/status` | what is running, background jobs, subagents, queue length, current model |
 | `/progress` | the full event list for the current turn |
+| `/progress on` / `off` | turn the rolling progress card on/off (remembered per chat) |
 | `send me the artifacts` | the agent sends the files to the chat |
 
 Replies arrive as cards, with bold text, tables and code blocks rendering properly.

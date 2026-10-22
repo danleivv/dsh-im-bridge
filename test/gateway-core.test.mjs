@@ -510,6 +510,46 @@ async function main() {
   }
 
   
+  console.log('\n[20] /progress on|off 开关')
+  {
+    const saved = []
+    const { plugin, transport, gateway } = makeGateway({ saveProgressPrefs: (prefs) => saved.push({ ...prefs }) })
+    const send = (text) => gateway.handleIncoming({ eventId: 'ev-tgl-' + Math.random(), messageId: 'om-tgl', chatId: CHAT, userId: USER, text })
+    const last = () => transport.sent.at(-1)?.text ?? ''
+
+    await send('/progress off')
+    check('/progress off 回执', /已关闭/.test(last()), JSON.stringify(last()))
+    check('off 落盘', saved.at(-1)?.[CHAT] === false, JSON.stringify(saved.at(-1)))
+
+    // 关掉后跑一轮带工具调用的任务：不应建卡
+    await send('跑个任务')
+    await wait(5)
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 700 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 700, callId: 'off1', name: 'pwsh', description: 'should not appear' })
+    await wait(40)
+    check('off 后不建卡', transport.cards.length === 0, String(transport.cards.length))
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 700 })
+    await wait(20)
+
+    await send('/progress on')
+    check('/progress on 回执', /已开启/.test(last()), JSON.stringify(last()))
+    check('on 落盘', saved.at(-1)?.[CHAT] === true, JSON.stringify(saved.at(-1)))
+
+    await send('再跑一个')
+    await wait(5)
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 701 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 701, callId: 'on1', name: 'pwsh', description: 'visible now' })
+    await wait(40)
+    check('on 后恢复建卡', transport.cards.length === 1, String(transport.cards.length))
+    check('卡片内容正确', String(transport.cards[0]?.card?.body?.elements?.[0]?.content).includes('visible now'))
+
+    await send('/progress 瞎写')
+    check('非法参数给用法', /用法/.test(last()), JSON.stringify(last()))
+
+    await send('/progress')
+    check('无参数拉取进度（有在跑的任务）', /完整事件|没有进行中/.test(last()), JSON.stringify(last().slice(0, 60)))
+  }
+
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
 
