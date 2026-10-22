@@ -191,7 +191,11 @@ pin it with: "sessionKeys": { "feishu:oc_xxx:ou_yyy": "<session id>" }
 
 ### `gateway.json`
 
-### Language
+Usually you never touch it — credentials are written by `dsh-feishu-setup`, everything else defaults.
+To change rendering, busy behaviour, prefixes, emoji names or language, see
+[`gateway.json.example`](gateway.json.example).
+
+#### Language
 
 Plugin settings has a **language** dropdown (中文 / English), Chinese by default. With English selected,
 every reply, progress card and error message in Feishu is English; **logs are left alone** so
@@ -203,11 +207,19 @@ You can also set it directly in `gateway.json`:
 { "language": "English" }
 ```
 
-### Other switches
+#### Other switches
 
-Usually you never touch it — credentials are written by `dsh-feishu-setup`, everything else defaults.
-To change rendering, busy behaviour, prefixes or emoji names, see
-[`gateway.json.example`](gateway.json.example).
+```json
+{
+  "progressCard": true,
+  "progressAllTurns": true,
+  "deliver": "live"
+}
+```
+
+- `progressCard`: master switch for the progress card
+- `progressAllTurns`: also show progress for turns started on the desktop (default on)
+- `deliver`: `live` = send as it goes, `turn-end` = send once the turn finishes
 
 To keep credentials in the environment instead of a file:
 

@@ -187,10 +187,10 @@ pin it with: "sessionKeys": { "feishu:oc_xxx:ou_yyy": "<会话 id>" }
 ### `gateway.json`
 
 通常**不用手改**——凭据由 `dsh-feishu-setup` 写入，其余走默认值。
-想调的话（渲染方式、忙碌行为、前缀、表情名、进度卡开关）见
+想调的话（渲染方式、忙碌行为、前缀、表情名、进度卡开关、语言）见
 [`gateway.json.example`](gateway.json.example)。
 
-### 界面语言
+#### 界面语言
 
 插件的设置里有一个**语言**下拉框（中文 / English），默认中文。选 English 之后，飞书里收到的
 所有回复、进度卡片、错误提示都变成英文；**日志不受影响**（日志保持原样，方便排障）。
@@ -201,9 +201,7 @@ pin it with: "sessionKeys": { "feishu:oc_xxx:ou_yyy": "<会话 id>" }
 { "language": "English" }
 ```
 
-### 其它常用开关
-
-几个常用的：
+#### 其它常用开关
 
 ```json
 {
