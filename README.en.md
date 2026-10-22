@@ -18,6 +18,32 @@ This is the fundamental difference from "forward the message to another AI": the
 background, wait for it to re-read your files, rebuild context from scratch. Here it continues the
 session that is open on your desktop — history, opened files, tool approvals, model selection.
 
+### Watch a long task actually move
+
+During a multi-minute task a **single card updates in place** in Feishu — no new messages, no
+notifications:
+
+```
+🔄 working (turn 12 · 2m12s)
+
+▶ pwsh  Probe a four second 1080p video generation  1m02s · running
+✓ pwsh  ffmpeg -i clip_01.mp4  18.2s
+· subagent researching callback mechanism  35s · running
+
+3 events · updated just now
+```
+
+It shows tool calls, subagents and elapsed time — using the model's own one-line description, not a
+raw command. Only the latest 5 rows are shown; the rest scroll away, with a total at the bottom.
+
+Turn it off whenever you like:
+
+```
+/progress off    stop the progress card
+/progress on     bring it back
+/progress        the full event list for this turn
+```
+
 ### No public IP
 
 The plugin dials out to Feishu over a long connection from your machine. It opens no port, needs no
@@ -49,7 +75,7 @@ dsh-feishu-send-file --file cut.mp4 --cover poster.jpg
 
 ### Ask for progress instead of guessing
 
-Send `?status`:
+Send `/status`:
 
 ```
 - running: yes
@@ -58,6 +84,8 @@ Send `?status`:
   - `pwsh` python render.py --batch 3 — running 12m40s
 - subagents (1):
   - research callback mechanism — running 3m12s
+- queued: 1 (waiting for this turn)
+- model: opencode-go / deepseek-v4.1-flash
 - queued: 1 message (waiting for the turn to end)
 ```
 
@@ -114,12 +142,22 @@ The first message makes the plugin log the mapping to add to your config (see be
 | `run today's render` | a turn starts, the reply arrives as a card |
 | another line while it runs | **inserted into that turn**, acknowledged at once |
 | `#summarise when this finishes` | queued; the running turn is left alone |
-| `?status` / `/status` | what is running, background jobs, subagents, queue length, current model |
-| `/progress` | the full event list for the current turn |
-| `/progress on` / `off` | turn the rolling progress card on/off (remembered per chat) |
+### Commands
+
+| Command | What it does |
+|---|---|
+| `/status` (or `?status`) | what is running, background jobs, subagents, queue length, current model |
+| `/stop` | stop the running turn; its leftover output is dropped |
+| `/model` | list models; `/model 2` or `/model provider/model` to switch (takes effect next turn) |
+| `/progress` | full event list for the current turn |
+| `/progress on` / `off` | progress card on/off (remembered per chat) |
+| `/help` | command reference |
+
+Only these are intercepted; something like `/etc/hosts` still goes to the agent.
 | `send me the artifacts` | the agent sends the files to the chat |
 
-Replies arrive as cards, with bold text, tables and code blocks rendering properly.
+
+Replies arrive as cards: bold, tables and code blocks render properly — including on the phone.
 
 ---
 
@@ -172,7 +210,8 @@ export FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 No. The plugin lives inside DSH; that is the price of sharing the same session.
 
 **Can I see tool-level progress on the phone?**
-No — you get final replies only.
+Yes. Long turns get a card that updates in place, showing tool calls, subagents and elapsed time.
+`/progress off` stops it.
 
 **Can one Feishu app serve several sessions?**
 No. One app is one long connection and one session; use one app per session.
@@ -184,6 +223,9 @@ The first sender is bound automatically as the only allowed user; everyone else 
 `~/.dsh-im-bridge/gateway.json`, readable only by your user account. Neither the repository nor the
 published package contains credentials.
 
+**Does the progress card spam the chat?**
+No. It is always the *same* message, updated in place — it never triggers a notification.
+
 **Do I need to install anything else?**
 No. The plugin talks to Feishu itself.
 
@@ -192,7 +234,8 @@ No. The plugin talks to Feishu itself.
 ## Known limitations
 
 - The desktop app must be running.
-- The phone shows final replies only, not tool-level progress.
+- The progress card shows the latest 5 rows only; send `/progress` for the full list.
+- The progress card shows tool calls and timings, **not** the model's reasoning text.
 - Tool approval prompts appear on the desktop only; the phone will wait.
 - One Feishu app accepts one long-connection consumer; two consumers split the events.
 - One app maps to one session.

@@ -18,14 +18,18 @@
   "allowUsers": [],
   "autoPinFirstUser": true,
 
-  "_behavior": "busyBehavior 'steer' = a message arriving while a turn runs is injected INTO that turn (this is what cc-connect cannot do). 'queue' falls back to a normal next-turn message.",
+  "_behavior": "busyBehavior 'steer' = a message arriving while a turn runs is injected INTO that turn. 'queue' falls back to a normal next-turn message.",
   "busyBehavior": "steer",
   "statusPrefix": "?",
-  "_prefixes": "deferPrefix queues the message until the running turn ends; steerPrefix (empty by default) would force an insert.",
+  "_prefixes": "Slash commands (/status /stop /model /progress /help) are handled by the plugin. deferPrefix queues a message until the running turn ends; steerPrefix (empty by default) would force an insert.",
   "deferPrefix": "#",
   "deferAckText": "已收到，等当前这一轮结束后发送",
   "steerPrefix": "",
   "steerAckText": "已接收消息，当前工具调用结束后响应",
+
+  "_progress": "A long turn gets ONE card updated in place (latest 5 rows). progressCard:false disables it globally; progressAllTurns:false limits it to turns started from Feishu (default true also covers desktop-started turns). Per-chat toggle: /progress on|off, stored in progress-prefs.json.",
+  "progressCard": true,
+  "progressAllTurns": true,
 
   "_format": "card = Feishu card 2.0 (renders bold/tables/code) for replies that contain markdown, plain text otherwise, with automatic text fallback if a card is rejected. text = strip markdown and send plain text.",
   "replyFormat": "card",
