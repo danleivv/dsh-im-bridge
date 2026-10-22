@@ -586,6 +586,48 @@ async function main() {
     plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 800 })
   }
 
+  console.log('\n[22] 语言：英文输出')
+  {
+    const { plugin, transport, gateway } = makeGateway({ language: 'en' })
+    const send = (text) => gateway.handleIncoming({ eventId: 'ev-en-' + Math.random(), messageId: 'om-en', chatId: CHAT, userId: USER, text })
+    const last = () => transport.sent.at(-1)?.text ?? ''
+
+    await send('/help')
+    check('help 是英文', /Commands/.test(last()) && /stop the running turn/.test(last()), JSON.stringify(last().slice(0, 70)))
+
+    await send('/status')
+    check('status 是英文', /self-check/.test(last()) && /running a turn/.test(last()), JSON.stringify(last().slice(0, 80)))
+
+    await send('/progress')
+    check('progress 空态是英文', /Nothing is running/.test(last()), JSON.stringify(last()))
+
+    await send('/progress on')
+    check('开关提示是英文', /Progress messages on/.test(last()), JSON.stringify(last()))
+
+    // 进度卡也要英文
+    await send('跑')
+    await wait(5)
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 900 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 900, callId: 'e1', name: 'pwsh', description: 'render the clip' })
+    await wait(40)
+    const card = String(transport.cards[0]?.card?.body?.elements?.[0]?.content ?? '')
+    check('进度卡是英文', /working \(turn 900/.test(card) && /running/.test(card), JSON.stringify(card.split('\n').slice(0, 3)))
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 900 })
+    await wait(30)
+    check('完成态是英文', /✅ done \(turn 900/.test(String(transport.cardUpdates.at(-1)?.content)), JSON.stringify(String(transport.cardUpdates.at(-1)?.content).split('\n')[0]))
+  }
+
+  console.log('\n[23] 语言：默认中文，非法值回落中文')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    await gateway.handleIncoming({ eventId: 'ev-zh-1', messageId: 'om-zh', chatId: CHAT, userId: USER, text: '/help' })
+    check('默认中文', /可用指令/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(String(transport.sent.at(-1)?.text).slice(0, 40)))
+
+    const other = makeGateway({ language: 'fr' })
+    await other.gateway.handleIncoming({ eventId: 'ev-fr-1', messageId: 'om-fr', chatId: CHAT, userId: USER, text: '/help' })
+    check('未知语言回落中文', /可用指令/.test(other.transport.sent.at(-1)?.text ?? ''), JSON.stringify(String(other.transport.sent.at(-1)?.text).slice(0, 40)))
+  }
+
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
 

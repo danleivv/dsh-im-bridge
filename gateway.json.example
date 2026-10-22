@@ -4,6 +4,9 @@
   "_mode": "enabled:true means the PLUGIN owns the Feishu long connection (native mode). One Feishu app allows only one consumer, so do not also run bin/dsh-feishu-gateway.mjs.",
   "enabled": true,
 
+  "_language": "Output language in Feishu: 中文 (default) or English. Only affects text sent to Feishu; logs are not translated.",
+  "language": "中文",
+
   "appId": "cli_xxxxxxxxxxxxxxxx",
   "appSecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "domain": "feishu",

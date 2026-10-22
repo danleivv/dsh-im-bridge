@@ -191,6 +191,20 @@ pin it with: "sessionKeys": { "feishu:oc_xxx:ou_yyy": "<session id>" }
 
 ### `gateway.json`
 
+### Language
+
+Plugin settings has a **language** dropdown (中文 / English), Chinese by default. With English selected,
+every reply, progress card and error message in Feishu is English; **logs are left alone** so
+troubleshooting stays readable.
+
+You can also set it directly in `gateway.json`:
+
+```json
+{ "language": "English" }
+```
+
+### Other switches
+
 Usually you never touch it — credentials are written by `dsh-feishu-setup`, everything else defaults.
 To change rendering, busy behaviour, prefixes or emoji names, see
 [`gateway.json.example`](gateway.json.example).
