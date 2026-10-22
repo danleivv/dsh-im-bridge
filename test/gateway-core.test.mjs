@@ -550,6 +550,42 @@ async function main() {
     check('无参数拉取进度（有在跑的任务）', /完整事件|没有进行中/.test(last()), JSON.stringify(last().slice(0, 60)))
   }
 
+  console.log('\n[21] 开关即时生效：进行中的这一轮也要响应')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    const send = (text) => gateway.handleIncoming({ eventId: 'ev-live-' + Math.random(), messageId: 'om-live', chatId: CHAT, userId: USER, text })
+    const last = () => transport.sent.at(-1)?.text ?? ''
+
+    await send('/progress off')
+    await send('跑')
+    await wait(5)
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 800 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 800, callId: 'a', name: 'pwsh', description: 'first tool' })
+    await wait(40)
+    check('off 时这一轮不建卡', transport.cards.length === 0, String(transport.cards.length))
+
+    // 轮次还在跑的时候打开：必须立刻补建
+    await send('/progress on')
+    await wait(40)
+    check('on 后立刻补建卡片', transport.cards.length === 1, String(transport.cards.length))
+    check('补建卡片带上轮次号', /第 800 轮/.test(String(transport.cards[0]?.card?.body?.elements?.[0]?.content)), String(transport.cards[0]?.card?.body?.elements?.[0]?.content).split('\n')[0])
+
+    // 之后的新工具调用继续更新
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 800, callId: 'b', name: 'pwsh', description: 'second tool' })
+    await wait(1700)
+    check('后续调用继续滚动', transport.cardUpdates.length >= 1 && String(transport.cardUpdates.at(-1)?.content).includes('second tool'), JSON.stringify(String(transport.cardUpdates.at(-1)?.content).split('\n').slice(2, 4)))
+
+    // 关掉：收尾并停止
+    await send('/progress off')
+    await wait(40)
+    check('关闭时卡片收尾为完成态', /✅ 完成/.test(String(transport.cardUpdates.at(-1)?.content)), JSON.stringify(String(transport.cardUpdates.at(-1)?.content).split('\n')[0]))
+    const updatesAfterOff = transport.cardUpdates.length
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 800, callId: 'c', name: 'pwsh', description: 'third tool' })
+    await wait(1700)
+    check('关闭后不再更新', transport.cardUpdates.length === updatesAfterOff, String(transport.cardUpdates.length - updatesAfterOff))
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 800 })
+  }
+
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
 
