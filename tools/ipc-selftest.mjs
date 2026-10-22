@@ -7,9 +7,16 @@
 import { connect } from 'node:net'
 
 const PORT = Number(process.env.DSH_BRIDGE_PORT || 9811)
+// 会话键必须由调用方提供：形如 feishu:<chat_id>:<open_id>。仓库里不放真实 id。
+// 从 ~/.dsh-im-bridge/config.json 的 sessionKeys 里挑一个，或用 DSH_BRIDGE_KEY 传入。
 const KEY = process.env.DSH_BRIDGE_KEY ?? ''
 const TEXT = '【桥接自检】这条消息由 dsh-im-bridge 插件通过本地 IPC 注入。请只回复：bridge-ok'
 const sendPrompt = !process.argv.includes('--no-prompt')
+if (!KEY) {
+  console.error('缺少会话键：设置 DSH_BRIDGE_KEY=feishu:<chat_id>:<open_id>')
+  console.error('可用的键见 ~/.dsh-im-bridge/config.json 的 sessionKeys')
+  process.exit(1)
+}
 
 const socket = connect(PORT, '127.0.0.1')
 let buffer = ''
