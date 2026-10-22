@@ -30,7 +30,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** Fake plugin port: records calls and lets the test push events. */
 function fakePlugin() {
-  const calls = { prompt: [], steer: [], attach: [], cancel: [] }
+  const calls = { prompt: [], steer: [], attach: [], cancel: [], setModel: [] }
   const listeners = []
   // Keys the plugin "knows" via its sessionKeys map.
   const knownKeys = new Set(['feishu:' + CHAT + ':' + USER, 'feishu:' + CHAT_B + ':' + USER_B])
@@ -77,7 +77,18 @@ function fakePlugin() {
         calls.steer.push(args)
         return { injected: true }
       },
-      cancel: async () => ({}),
+      cancel: async (request) => {
+        calls.cancel.push(request)
+        return { ok: true }
+      },
+      models: async () => ({
+        groups: [{ provider: 'p1', name: 'P1', models: [{ id: 'm1', name: 'M1' }, { id: 'm2', name: 'M2' }] }],
+        current: { provider: 'p1', model: 'm1' },
+      }),
+      setModel: async (request) => {
+        calls.setModel.push(request)
+        return { ok: true }
+      },
       activity: async () => ({
         sessionId: SESSION,
         jobs: [{ kind: 'pwsh', label: 'Start-Sleep -Seconds 60', elapsed: '2m10s', elapsedMs: 130000 }],
@@ -336,8 +347,66 @@ async function main() {
     check('列出子 agent', /正在运行的子 agent（1）/.test(text) && /调研回调机制/.test(text), '')
     check('子 agent 带时长', /已运行 45s/.test(text), '')
   }
+  console.log('\n[15] 斜杠指令：/status /help /stop /model')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    const send = (text) => gateway.handleIncoming({ eventId: 'ev-cmd-' + Math.random(), messageId: 'om-cmd', chatId: CHAT, userId: USER, text })
+    const last = () => transport.sent.at(-1)?.text ?? ''
+
+    await send('/help')
+    check('/help 列出 /stop', /\/stop/.test(last()) && /\/model/.test(last()), JSON.stringify(last().slice(0, 80)))
+
+    await send('/status')
+    check('/status 回自检', /自检/.test(last()), JSON.stringify(last().slice(0, 60)))
+
+    await send('?status')
+    check('?status 旧写法仍然可用', /自检/.test(last()), JSON.stringify(last().slice(0, 60)))
+
+    // 空闲时 /stop
+    await send('/stop')
+    check('空闲 /stop 提示无可停轮次', /没有在跑的轮次/.test(last()), JSON.stringify(last()))
+
+    // 忙碌时 /stop：要真的调用 cancel
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 7 })
+    await wait(5)
+    await send('/stop')
+    check('忙时 /stop 调用 cancel', plugin.calls.cancel.length === 1, JSON.stringify(plugin.calls.cancel))
+    check('忙时 /stop 回复已停止', /已停止/.test(last()), JSON.stringify(last()))
+
+    // /stop 之后这一轮的残余输出不再发
+    const before = transport.sent.length
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 7, text: '这段不该发出去' })
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 7, reason: 'cancelled' })
+    await wait(10)
+    check('停止后残余输出被丢弃', transport.sent.length === before, JSON.stringify(transport.sent.slice(before).map((s) => s.text)))
+
+    // /model 列表
+    await send('/model')
+    check('/model 列出编号与当前', /1\)/.test(last()) && /2\)/.test(last()) && /当前/.test(last()), JSON.stringify(last().slice(0, 120)))
+
+    // /model 2 切换
+    await send('/model 2')
+    check('/model 2 调用 setModel', plugin.calls.setModel.length === 1 && plugin.calls.setModel[0].model === 'm2', JSON.stringify(plugin.calls.setModel))
+    check('/model 切换后说明下一轮生效', /下一轮生效/.test(last()), JSON.stringify(last()))
+
+    // /model 按 id
+    await send('/model p1/m1')
+    check('/model provider/model 也可用', plugin.calls.setModel.length === 2 && plugin.calls.setModel[1].model === 'm1', JSON.stringify(plugin.calls.setModel.map((c) => c.model)))
+
+    // 非法编号
+    await send('/model 99')
+    check('非法编号给出提示', /编号超出范围/.test(last()), JSON.stringify(last()))
+
+    // 未知斜杠指令必须当普通文本
+    const promptsBefore = plugin.calls.prompt.length
+    await send('/etc/hosts')
+    check('未知 /xxx 当普通文本发给 agent', plugin.calls.prompt.length === promptsBefore + 1 && plugin.calls.prompt.at(-1).text === '/etc/hosts', JSON.stringify(plugin.calls.prompt.at(-1)))
+  }
+
   console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
+
+
 }
 
 main().catch((error) => {
