@@ -104,9 +104,13 @@ function fakePlugin() {
 function fakeTransport() {
   const sent = []
   const reactions = []
+  const cards = []
+  const cardUpdates = []
   return {
     sent,
     reactions,
+    cards,
+    cardUpdates,
     port: {
       sendText: async ({ chatId, text }) => {
         sent.push({ kind: 'send', chatId, text })
@@ -116,6 +120,14 @@ function fakeTransport() {
       },
       addReaction: async ({ messageId, emoji }) => {
         reactions.push({ messageId, emoji })
+      },
+      createCard: async ({ chatId, card }) => {
+        cards.push({ chatId, card })
+        return 'om_progress_' + cards.length
+      },
+      updateCard: async ({ messageId, card }) => {
+        cardUpdates.push({ messageId, content: card?.body?.elements?.[0]?.content ?? '' })
+        return { code: 0 }
       },
     },
   }
@@ -420,6 +432,65 @@ async function main() {
     check('每一片围栏都闭合', chunks.every((chunk) => !hasOpenFence(chunk)), JSON.stringify(chunks.map((c) => hasOpenFence(c))))
     check('续接片重新打开代码块', chunks.slice(1).every((chunk) => chunk.startsWith('```')), JSON.stringify(chunks.map((c) => c.slice(0, 8))))
     check('普通文本分片不受影响', splitMessage('a\nb\nc', 2).length >= 1, JSON.stringify(splitMessage('a\nb\nc', 2)))
+  }
+
+  console.log('\n[17] 进度卡片接线：工具调用 → 建卡 → 更新 → 完成态')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    await gateway.handleIncoming({ eventId: 'ev-prog-1', messageId: 'om-prog', chatId: CHAT, userId: USER, text: '跑个长任务' })
+    await wait(5)
+
+    // 轮次开始（插件会把 turn-start 转发过来）
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 500 })
+    await wait(5)
+    check('turn-start 只建状态、还没建卡', transport.cards.length === 0, String(transport.cards.length))
+
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 500, callId: 'call_1', name: 'pwsh', arguments: JSON.stringify({ command: 'Start-Sleep -Seconds 60' }) })
+    await wait(30)
+    check('工具调用后立刻建卡', transport.cards.length === 1, String(transport.cards.length))
+    const first = transport.cards[0]?.card?.body?.elements?.[0]?.content ?? ''
+    check('卡片里有工具名', first.includes('pwsh'), JSON.stringify(first.split('\n').slice(2, 4)))
+    check('卡片里标"进行中"', first.includes('进行中'), JSON.stringify(first.split('\n').slice(2, 4)))
+    check('卡片头部有轮次', /第 500 轮/.test(first), first.split('\n')[0])
+
+    // 结果回来
+    plugin.emit({ event: 'tool-result', sessionId: SESSION, turn: 500, callId: 'call_1' })
+    await wait(1600)
+    const updated = transport.cardUpdates.at(-1)
+    check('结果回来后原地更新', transport.cardUpdates.length >= 1 && updated?.messageId === 'om_progress_1', JSON.stringify(transport.cardUpdates.map((u) => u.messageId)))
+    check('更新后不再标"进行中"', !String(updated?.content).includes('进行中'), JSON.stringify(String(updated?.content).split('\n').slice(2, 4)))
+
+    // 轮次结束
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 500, reason: 'done' })
+    await wait(30)
+    const final = transport.cardUpdates.at(-1)
+    check('结束后卡片变完成态', /✅ 完成/.test(String(final?.content)), JSON.stringify(String(final?.content).split('\n')[0]))
+    check('没有重复建卡', transport.cards.length === 1, String(transport.cards.length))
+  }
+
+  console.log('\n[18] 进度卡片不影响正式回复')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    await gateway.handleIncoming({ eventId: 'ev-prog-2', messageId: 'om-prog2', chatId: CHAT, userId: USER, text: '跑' })
+    await wait(5)
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 4 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 500, callId: 'c', name: 'pwsh', arguments: '{}' })
+    await wait(30)
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 500, text: '正式回复内容' })
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 4 })
+    await wait(30)
+    const replies = transport.sent.filter((item) => String(item.text ?? '').includes('正式回复内容'))
+    check('正式回复照常发出', replies.length === 1, JSON.stringify(transport.sent.map((s) => s.text)))
+  }
+
+  console.log('\n[19] 桌面端发起的轮次不建进度卡')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    // 没有 handleIncoming：state.inFlight 为 false，模拟桌面端的轮次
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 2 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 2, callId: 'x', name: 'pwsh', arguments: '{}' })
+    await wait(30)
+    check('不建卡', transport.cards.length === 0, String(transport.cards.length))
   }
 
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
