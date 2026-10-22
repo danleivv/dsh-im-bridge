@@ -30,7 +30,7 @@
     "node": ">=20.6.0"
   },
   "scripts": {
-    "test": "node test/dry-run.mjs && node test/gateway-core.test.mjs && node test/feishu-parse.test.mjs && node test/feishu-payload.test.mjs && node test/markdown.test.mjs && node test/seen-store.test.mjs && node test/config-tools.test.mjs && node test/feishu-registration.test.mjs && node test/feishu-media.test.mjs && node test/feishu-tool.test.mjs",
+    "test": "node test/dry-run.mjs && node test/gateway-core.test.mjs && node test/feishu-parse.test.mjs && node test/feishu-payload.test.mjs && node test/markdown.test.mjs && node test/seen-store.test.mjs && node test/config-tools.test.mjs && node test/feishu-registration.test.mjs && node test/feishu-media.test.mjs && node test/feishu-tool.test.mjs && node test/progress-card.test.mjs",
     "health": "node tools/bridge-health.mjs",
     "gateway": "node bin/dsh-feishu-gateway.mjs"
   },

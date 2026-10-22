@@ -114,7 +114,8 @@ The first message makes the plugin log the mapping to add to your config (see be
 | `run today's render` | a turn starts, the reply arrives as a card |
 | another line while it runs | **inserted into that turn**, acknowledged at once |
 | `#summarise when this finishes` | queued; the running turn is left alone |
-| `?status` | what is running, background jobs, subagents, queue length |
+| `?status` / `/status` | what is running, background jobs, subagents, queue length, current model |
+| `/progress` | the full event list for the current turn |
 | `send me the artifacts` | the agent sends the files to the chat |
 
 Replies arrive as cards, with bold text, tables and code blocks rendering properly.
