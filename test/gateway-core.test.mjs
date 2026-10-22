@@ -13,7 +13,8 @@
  *   - a plugin failure produces a visible error reply, never silence
  *   - two chats keep independent state
  */
-import { createGateway, splitMessage } from '../lib/gateway-core.mjs'
+import { hasOpenFence, createGateway, splitMessage } from '../lib/gateway-core.mjs'
+import { normalizeFenceLanguages, buildMarkdownCard } from '../lib/feishu-payload.mjs'
 
 const SESSION = 'session-test-target'
 const CHAT = 'oc_chat_a'
@@ -403,7 +404,25 @@ async function main() {
     check('未知 /xxx 当普通文本发给 agent', plugin.calls.prompt.length === promptsBefore + 1 && plugin.calls.prompt.at(-1).text === '/etc/hosts', JSON.stringify(plugin.calls.prompt.at(-1)))
   }
 
-  console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
+    console.log('\n[16] 代码块：语言别名归一化 + 分片不破坏围栏')
+  {
+    const md = ['```js', 'const a = 1', '```', '', '```ts', 'let b = 2', '```', '', '```', 'plain', '```'].join('\n')
+    const normalized = normalizeFenceLanguages(md)
+    check('js → javascript', normalized.includes('```javascript'), JSON.stringify(normalized.split('\n')[0]))
+    check('ts → typescript', normalized.includes('```typescript'), JSON.stringify(normalized.split('\n')[5]))
+    check('无语言标记保持无标记', normalized.includes('\n```\nplain'), JSON.stringify(normalized.split('\n').slice(6, 9)))
+    check('卡片里用的是归一化后的文本', buildMarkdownCard(md).body.elements[0].content.includes('```javascript'))
+
+    // 分片：长代码块被切开后，每段围栏必须闭合
+    const body = '```js\n' + Array.from({ length: 40 }, (_, i) => 'const v' + i + ' = ' + i).join('\n') + '\n```'
+    const chunks = splitMessage(body, 200)
+    check('长代码块被切成多片', chunks.length > 1, String(chunks.length))
+    check('每一片围栏都闭合', chunks.every((chunk) => !hasOpenFence(chunk)), JSON.stringify(chunks.map((c) => hasOpenFence(c))))
+    check('续接片重新打开代码块', chunks.slice(1).every((chunk) => chunk.startsWith('```')), JSON.stringify(chunks.map((c) => c.slice(0, 8))))
+    check('普通文本分片不受影响', splitMessage('a\nb\nc', 2).length >= 1, JSON.stringify(splitMessage('a\nb\nc', 2)))
+  }
+
+console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
 
 

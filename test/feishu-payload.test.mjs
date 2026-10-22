@@ -9,7 +9,7 @@
  *
  * Run: node test/feishu-payload.test.mjs
  */
-import { buildMessagePayload, buildMarkdownCard, buildLegacyCard, hasMarkdownSyntax, splitMarkdownTables, MAX_CARD_TABLES } from '../lib/feishu-payload.mjs'
+import { buildMessagePayload, buildMarkdownCard, buildLegacyCard, hasMarkdownSyntax, splitMarkdownTables, normalizeFenceLanguages, MAX_CARD_TABLES } from '../lib/feishu-payload.mjs'
 
 let failures = 0
 const check = (label, ok, detail = '') => {
@@ -126,6 +126,22 @@ console.log('\n[10] 无表格时保持原样')
   const card = buildMarkdownCard('## 标题\n\n**粗体**')
   check('只有一个 markdown 元素', card.body.elements.length === 1 && card.body.elements[0].tag === 'markdown', JSON.stringify(card.body.elements.map((e) => e.tag)))
   check('内容原样传递', card.body.elements[0].content === '## 标题\n\n**粗体**', card.body.elements[0].content)
+}
+
+
+console.log('\n[11] 表格紧贴代码块：必须掰开')
+{
+  const md = ['| a | b |', '|---|---|', '| 1 | 2 |', '```js', 'const x = 1', '```'].join('\n')
+  const card = buildMarkdownCard(md)
+  check('表格被抽成独立组件', card.body.elements.some((e) => e.tag === 'table'), card.body.elements.map((e) => e.tag).join(','))
+  const text = card.body.elements.filter((e) => e.tag === 'markdown').map((e) => e.content).join('\n')
+  check('代码块不与表格同段', !/\|\s*\n```/.test(text), JSON.stringify(text.slice(0, 80)))
+  check('围栏仍被识别', text.includes('```javascript'), JSON.stringify(text.slice(0, 80)))
+
+  // 表格没有分隔行时不会被抽走，这时靠空行保底
+  const noSep = ['| a | b |', '```js', 'const y = 2', '```'].join('\n')
+  const guarded = normalizeFenceLanguages(noSep)
+  check('未成表格时也插入空行', guarded.includes('| a | b |\n\n```'), JSON.stringify(guarded))
 }
 
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
