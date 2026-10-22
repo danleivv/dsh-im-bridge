@@ -78,6 +78,7 @@ function fakePlugin() {
         calls.steer.push(args)
         return { injected: true }
       },
+      chats: async () => ({ [SESSION]: CHAT }),
       cancel: async (request) => {
         calls.cancel.push(request)
         return { ok: true }
@@ -483,16 +484,32 @@ async function main() {
     check('正式回复照常发出', replies.length === 1, JSON.stringify(transport.sent.map((s) => s.text)))
   }
 
-  console.log('\n[19] 桌面端发起的轮次不建进度卡')
+  console.log('\n[19] 桌面端发起的轮次也要推进度卡（同一会话）')
   {
-    const { plugin, transport, gateway } = makeGateway()
-    // 没有 handleIncoming：state.inFlight 为 false，模拟桌面端的轮次
-    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 2 })
-    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 2, callId: 'x', name: 'pwsh', arguments: '{}' })
+    const { plugin, transport } = makeGateway()
+    // 不调用 handleIncoming：模拟桌面端发起的轮次（state.inFlight 一直是 false）
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 600 })
+    await wait(5)
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 600, callId: 'desk1', name: 'pwsh', description: 'Probe a four second 1080p video generation' })
+    await wait(30)
+    check('桌面端轮次也建卡', transport.cards.length === 1, String(transport.cards.length))
+    const content = transport.cards[0]?.card?.body?.elements?.[0]?.content ?? ''
+    check('卡片显示模型写的人话描述', content.includes('Probe a four second 1080p'), JSON.stringify(content.split('\n').slice(2, 4)))
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 600 })
+    await wait(30)
+    check('桌面端轮次结束也收尾', /✅ 完成/.test(String(transport.cardUpdates.at(-1)?.content)), JSON.stringify(String(transport.cardUpdates.at(-1)?.content).split('\n')[0]))
+  }
+
+  console.log('\n[19b] 关掉 progressAllTurns 就只管飞书发起的轮次')
+  {
+    const { plugin, transport } = makeGateway({ progressAllTurns: false })
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 601 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 601, callId: 'x', name: 'pwsh', arguments: '{}' })
     await wait(30)
     check('不建卡', transport.cards.length === 0, String(transport.cards.length))
   }
 
+  
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
 
