@@ -9,7 +9,7 @@
  *
  * Run: node test/feishu-payload.test.mjs
  */
-import { buildMessagePayload, buildMarkdownCard, buildLegacyCard, hasMarkdownSyntax } from '../lib/feishu-payload.mjs'
+import { buildMessagePayload, buildMarkdownCard, buildLegacyCard, hasMarkdownSyntax, splitMarkdownTables, MAX_CARD_TABLES } from '../lib/feishu-payload.mjs'
 
 let failures = 0
 const check = (label, ok, detail = '') => {
@@ -73,14 +73,59 @@ console.log('\n[6] 卡片 JSON 必须能被序列化回等价对象（防止运�
 {
   const md = '## t\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n```powershell\nStart-Sleep 1\n```'
   const payload = buildMessagePayload(md, { format: 'card' })
-  let ok = true
+  let parsed = null
   try {
-    const parsed = JSON.parse(payload.content)
-    ok = parsed.body.elements[0].content === md
-  } catch {
-    ok = false
-  }
-  check('往返无损', ok)
+    parsed = JSON.parse(payload.content)
+  } catch {}
+  check('可解析', parsed !== null)
+  const tags = (parsed?.body?.elements ?? []).map((e) => e.tag)
+  check('表格变成 table 组件', tags.includes('table'), tags.join(','))
+  check('正文仍在 markdown 元素里', tags.includes('markdown'), tags.join(','))
+  const text = parsed.body.elements.filter((e) => e.tag === 'markdown').map((e) => e.content).join('\n')
+  check('标题与代码块原样保留', text.includes('## t') && text.includes('```powershell'), JSON.stringify(text))
+}
+
+console.log('\n[7] 表格提取：markdown 表格 → 原生 table 组件')
+{
+  const md = ['开头', '', '| 组 | 改动 |', '|---|---|', '| base | 现状 |', '| +1 | 加词 |', '', '结尾'].join('\n')
+  const segs = splitMarkdownTables(md)
+  check('分段顺序正确', segs.map((s) => s.type).join(',') === 'markdown,table,markdown', JSON.stringify(segs.map((s) => s.type)))
+  check('表头解析', JSON.stringify(segs[1].header) === JSON.stringify(['组', '改动']), JSON.stringify(segs[1].header))
+  check('数据行不含分隔行', segs[1].rows.length === 2, String(segs[1].rows.length))
+
+  const card = buildMarkdownCard(md)
+  check('卡片里有 table 元素', card.body.elements.some((e) => e.tag === 'table'), card.body.elements.map((e) => e.tag).join(','))
+  const table = card.body.elements.find((e) => e.tag === 'table')
+  check('列名来自表头', table.columns.map((c) => c.display_name).join('/') === '组/改动', table.columns.map((c) => c.display_name).join('/'))
+  check('单元格用 lark_md', table.columns.every((c) => c.data_type === 'lark_md'))
+  check('行数据按列 key 对齐', table.rows[0].c0 === 'base' && table.rows[0].c1 === '现状', JSON.stringify(table.rows[0]))
+}
+
+console.log('\n[8] 不该被当成表格的情况')
+{
+  const noSep = '| a | b |\n| 1 | 2 |'
+  check('缺分隔行不当表格', splitMarkdownTables(noSep).every((s) => s.type === 'markdown'), JSON.stringify(splitMarkdownTables(noSep).map((s) => s.type)))
+
+  const fence = '```\n| a | b |\n|---|---|\n| 1 | 2 |\n```'
+  check('代码块里的表格不抽', splitMarkdownTables(fence).every((s) => s.type === 'markdown'), JSON.stringify(splitMarkdownTables(fence).map((s) => s.type)))
+}
+
+console.log('\n[9] 表格数量上限与降级')
+{
+  const one = '| a |\n|---|\n| 1 |'
+  const many = Array.from({ length: MAX_CARD_TABLES + 2 }, () => one).join('\n\n')
+  const card = buildMarkdownCard(many)
+  const tables = card.body.elements.filter((e) => e.tag === 'table')
+  check('最多 ' + MAX_CARD_TABLES + ' 个表格组件', tables.length === MAX_CARD_TABLES, String(tables.length))
+  const text = card.body.elements.filter((e) => e.tag === 'markdown').map((e) => e.content).join('')
+  check('超限部分降级且不露竖线', !text.includes('|') && text.trim().length > 0, JSON.stringify(text.slice(0, 60)))
+}
+
+console.log('\n[10] 无表格时保持原样')
+{
+  const card = buildMarkdownCard('## 标题\n\n**粗体**')
+  check('只有一个 markdown 元素', card.body.elements.length === 1 && card.body.elements[0].tag === 'markdown', JSON.stringify(card.body.elements.map((e) => e.tag)))
+  check('内容原样传递', card.body.elements[0].content === '## 标题\n\n**粗体**', card.body.elements[0].content)
 }
 
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
