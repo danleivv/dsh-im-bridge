@@ -18,6 +18,7 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import * as Lark from '@larksuiteoapi/node-sdk'
 import { createMediaSender } from '../lib/feishu-media.mjs'
+import { readLastChat } from '../lib/gateway-config.mjs'
 
 const ROOT = join(homedir(), '.dsh-im-bridge')
 const args = process.argv.slice(2)
@@ -73,7 +74,13 @@ function resolveChatId() {
     process.exit(1)
   }
   if (gateway.defaultChat) return gateway.defaultChat
-  console.error('未指定目标聊天：加 --chat，或 --session，或在 gateway.json 里设置 defaultChat')
+  const lastChat = readLastChat()
+  if (lastChat?.chatId) {
+    console.error('  未指定目标：用本机器人最近收到消息的会话 ' + lastChat.chatId)
+    return lastChat.chatId
+  }
+  console.error('未指定目标聊天：加 --chat，或 --session，或在 gateway.json 设置 defaultChat，')
+  console.error('或先给机器人发一条消息（会自动记录可用的 chat_id 到 ~/.dsh-im-bridge/last-chat.json）')
   process.exit(1)
 }
 

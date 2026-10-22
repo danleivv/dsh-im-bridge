@@ -130,6 +130,17 @@ console.log('\n[6] chat 参数可以绕过会话映射')
   check('用了显式 chat', calls[0] === 'oc_explicit', calls[0])
 }
 
+console.log('\n[7] lastChat 兜底（会话没绑映射时仍可发）')
+{
+  const tool = createSendFileTool({ root, senderFactory: () => ({ send: async ({ chatId }) => ({ messageId: 'om', kind: 'file', bytes: 1 }) }) })
+  const direct = resolveTargetChat({ lastChat: { chatId: 'oc_last_seen' } })
+  check('没有其他来源时用 lastChat', direct.chatId === 'oc_last_seen' && direct.source.includes('最近'), JSON.stringify(direct))
+  const preferred = resolveTargetChat({ defaultChat: 'oc_default', lastChat: { chatId: 'oc_last_seen' } })
+  check('defaultChat 优先于 lastChat', preferred.chatId === 'oc_default', preferred.chatId)
+  let threw = false
+  try { resolveTargetChat({}) } catch (error) { threw = /最近收到消息/.test(error.message) }
+  check('全都没有时报错并说明办法', threw)
+}
 rmSync(root, { recursive: true, force: true })
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
 process.exit(failures === 0 ? 0 : 1)

@@ -8,7 +8,7 @@
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { classifyFile, checkUploadable, buildMediaMessage, createMediaSender, IMAGE_LIMIT_BYTES, FILE_LIMIT_BYTES } from '../lib/feishu-media.mjs'
+import { classifyFile, checkUploadable, buildMediaMessage, createMediaSender, describeSendError, IMAGE_LIMIT_BYTES, FILE_LIMIT_BYTES } from '../lib/feishu-media.mjs'
 
 let failures = 0
 const check = (label, ok, detail = '') => {
@@ -119,6 +119,17 @@ console.log('\n[6] 发送流程（假 client）')
   check('发送错误码被抛出', threw)
 }
 
+console.log('\n[7] 错误码翻译（避免"裸 400"）')
+{
+  const e230002 = describeSendError({ response: { data: { code: 230002, msg: 'bot not in chat' } } })
+  check('230002 指出是另一个应用的会话', /另一个飞书应用/.test(e230002) && /230002/.test(e230002), e230002.split('\n')[0])
+  const e230001 = describeSendError({ response: { data: { code: 230001, msg: 'invalid receive_id' } } })
+  check('230001 指出 receive_id 无效', /receive_id 不是本应用可达/.test(e230001), e230001.split('\n')[0])
+  const eSize = describeSendError({ response: { data: { code: 234003, msg: 'file size too large' } } })
+  check('超限给出上限', /10 MB/.test(eSize) && /30 MB/.test(eSize), eSize.split('\n')[0])
+  const eOther = describeSendError({ response: { data: { code: 99991400, msg: 'rate limit' } } })
+  check('未知码保留原信息', /99991400/.test(eOther) && /rate limit/.test(eOther), eOther)
+}
 rmSync(dir, { recursive: true, force: true })
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
 process.exit(failures === 0 ? 0 : 1)
