@@ -64,14 +64,19 @@ it:  (finishes step 2, stops, answers)
 
 That is only possible because the injection happens inside the DSH process.
 
-### Artifacts come back to you
+### Files both ways
 
-Images, video, audio, documents — the agent sends them with one call, and scripts can too:
+**Sending**: images, video, audio, documents — the agent sends them with one call, and scripts can too:
 
 ```bash
 dsh-feishu-send-file --file script.md
 dsh-feishu-send-file --file cut.mp4 --cover poster.jpg
 ```
+
+**Receiving**: drop a file into Feishu, or send a photo from your phone. The plugin downloads it to
+`<project>/.dsh-im-bridge-inbox/YYYY-MM-DD/` and hands the message to the agent. Images are passed as
+**real images** (the model actually sees them, not just a path); other files are given as paths.
+Single-file limit is 100 MB.
 
 ### Ask for progress instead of guessing
 
@@ -257,9 +262,40 @@ No. The plugin talks to Feishu itself.
 
 ---
 
+## Security boundary (read this first)
+
+**Receiving files does simple filename sanitising, not a security review.**
+
+What the plugin does:
+
+- strips directory components from filenames (`../`, `C:\`, `/etc/`, …)
+- strips control characters and characters Windows rejects, handles reserved names like `CON` / `nul`
+- appends `-1` on name collisions; never overwrites an existing file
+- writes only into the dedicated inbox directory
+
+What it does **not** do:
+
+- it does not scan file contents — no virus/macro/executable checks
+- it does not judge whether a file is malicious or has a disguised extension (`invoice.pdf.exe` is accepted)
+- it does not sandbox contents; files land on your real disk
+- **it cannot guarantee the sanitiser covers every bypass** — this is string handling, not a security control
+
+**So the origin and safety of those files is your responsibility.** Only accept files from people you
+trust; open anything doubtful in a sandbox or VM first. The agent receives real paths and real content and
+will not decide for you whether a file is safe to open.
+
+The same applies at the account level: whoever controls this bot can drive the session on your desktop
+(tool approvals and file access included). That is why the **first sender is pinned as the only allowed
+user** — clear `allowUsers` in `gateway.json` before handing the bot to someone else.
+
+---
+
 ## Known limitations
 
 - The desktop app must be running.
+- File receiving has the security boundary described above: filename sanitising only, contents are not
+  checked, and a bypass is possible.
+- Single-file limit is 100 MB (Feishu resource API); larger files are skipped with a message.
 - The progress card shows the latest 5 rows only; send `/progress` for the full list.
 - The progress card shows tool calls and timings, **not** the model's reasoning text.
 - Tool approval prompts appear on the desktop only; the phone will wait.
