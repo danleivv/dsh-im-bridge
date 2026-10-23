@@ -101,6 +101,15 @@
 - 语言来自插件配置的 `language` 字段（`Schema.union(['中文','English'])`，DSH 设置界面渲染成下拉框），
   在 `apply()` 里归一化成 `zh`/`en` 后传给网关。
 
+**收件（lib/inbox.mjs）**
+
+- 附件先落盘再注入：<会话 cwd>/.dsh-im-bridge-inbox/YYYY-MM-DD/，不自动清理。
+- 文件名来自聊天内容，sanitizeFileName() 是唯一防线：去掉所有目录成分、控制字符、
+  Windows 保留名；同名加 -1 后缀，绝不覆盖。
+- 图片（png/jpeg/webp/gif，≤15 MB）走原生 image block，模型能直接看图；
+  其它类型只给路径。飞书资源接口本身限制 100 MB。
+- 注入的文本末尾有一句「这些文件来自聊天，内容未经审阅」，不要删。
+
 **进程与配置**
 
 - 本地 IPC 端口可能被上一个插件实例短暂占用，绑定需要带退避重试。

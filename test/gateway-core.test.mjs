@@ -628,6 +628,34 @@ async function main() {
     check('未知语言回落中文', /可用指令/.test(other.transport.sent.at(-1)?.text ?? ''), JSON.stringify(String(other.transport.sent.at(-1)?.text).slice(0, 40)))
   }
 
+  console.log('\n[24] 收到文件：路由到插件并回执')
+  {
+    const handled = []
+    const { transport, gateway } = makeGateway({
+      onAttachments: async ({ attachments, sessionId }) => {
+        handled.push({ attachments, sessionId })
+        return { summary: '已收下 ' + attachments.length + ' 个' }
+      },
+    })
+    await gateway.handleIncoming({
+      eventId: 'ev-file-1', messageId: 'om-file', chatId: CHAT, userId: USER, text: '',
+      attachments: [{ kind: 'file', fileKey: 'f1', fileName: '报表.xlsx' }],
+    })
+    await wait(5)
+    check('带附件的空文本没有被丢弃', handled.length === 1, JSON.stringify(handled.length))
+    check('附件传给了插件', handled[0]?.attachments?.[0]?.fileKey === 'f1', JSON.stringify(handled[0]?.attachments))
+    check('回执发给用户', /已收下 1 个/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
+
+    // 关掉接收
+    const off = makeGateway({ receiveFiles: false })
+    await off.gateway.handleIncoming({
+      eventId: 'ev-file-2', messageId: 'om-file2', chatId: CHAT, userId: USER, text: '',
+      attachments: [{ kind: 'file', fileKey: 'f2', fileName: 'a.txt' }],
+    })
+    await wait(5)
+    check('关掉后明确拒绝', /不接收文件/.test(off.transport.sent.at(-1)?.text ?? ''), JSON.stringify(off.transport.sent.at(-1)?.text))
+  }
+
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
 
