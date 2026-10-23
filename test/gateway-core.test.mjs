@@ -31,7 +31,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** Fake plugin port: records calls and lets the test push events. */
 function fakePlugin() {
-  const calls = { prompt: [], steer: [], attach: [], cancel: [], setModel: [] }
+  const calls = { prompt: [], steer: [], attach: [], cancel: [], setModel: [], setPermission: [] }
   const listeners = []
   // Keys the plugin "knows" via its sessionKeys map.
   const knownKeys = new Set(['feishu:' + CHAT + ':' + USER, 'feishu:' + CHAT_B + ':' + USER_B])
@@ -79,6 +79,18 @@ function fakePlugin() {
         return { injected: true }
       },
       chats: async () => ({ [SESSION]: CHAT }),
+      permissions: async () => ({
+        presets: [
+          { id: 'danger-full-access', name: '完全权限', description: '允许一切工具' },
+          { id: 'workspace-write', name: '只写工作区', description: '只能改项目目录' },
+          { id: 'read-only', name: '仅可查看', description: '只读' },
+        ],
+        current: 'danger-full-access',
+      }),
+      setPermission: async (request) => {
+        calls.setPermission.push(request)
+        return { ok: true }
+      },
       cancel: async (request) => {
         calls.cancel.push(request)
         return { ok: true }
@@ -396,7 +408,12 @@ async function main() {
 
     // /model 列表
     await send('/model')
-    check('/model 列出编号与当前', /1\)/.test(last()) && /2\)/.test(last()) && /当前/.test(last()), JSON.stringify(last().slice(0, 120)))
+    // 现在是选项卡：应当发出一张带按钮的卡片，而不是文字列表
+    const modelCard = transport.cards.at(-1)?.card
+    const modelText = JSON.stringify(modelCard ?? {})
+    check('/model 发的是卡片', modelCard !== undefined, JSON.stringify(transport.cards.length))
+    check('卡片里有模型按钮', modelText.includes('m1') && modelText.includes('m2'), modelText.slice(0, 120))
+    check('卡片标出当前模型', modelText.includes('当前'), modelText.slice(0, 120))
 
     // /model 2 切换
     await send('/model 2')
@@ -654,6 +671,51 @@ async function main() {
     })
     await wait(5)
     check('关掉后明确拒绝', /不接收文件/.test(off.transport.sent.at(-1)?.text ?? ''), JSON.stringify(off.transport.sent.at(-1)?.text))
+  }
+
+  console.log('\n[25] 卡片回调：模型与权限选项卡')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    const send = (text) => gateway.handleIncoming({ eventId: 'ev-card-' + Math.random(), messageId: 'om-card', chatId: CHAT, userId: USER, text })
+    await send('先建状态')
+    await wait(5)
+
+    // 模型卡片 + 点击
+    await send('/model')
+    const card = transport.cards.at(-1)?.card
+    check('模型卡片有按钮', JSON.stringify(card).includes('model.select'), JSON.stringify(card).slice(0, 100))
+    const reply = await gateway.handleCardAction({ value: { action: 'model.select', provider: 'p1', model: 'm2' }, messageId: 'om_card_msg', chatId: CHAT, userId: USER })
+    check('回调切换了模型', plugin.calls.setModel.at(-1)?.model === 'm2', JSON.stringify(plugin.calls.setModel.at(-1)))
+    check('回调返回成功提示', /模型已切换/.test(JSON.stringify(reply)), JSON.stringify(reply))
+    check('卡片被原地更新', transport.cardUpdates.at(-1)?.messageId === 'om_card_msg', JSON.stringify(transport.cardUpdates.at(-1)?.messageId))
+
+    // 权限卡片 + 点击
+    await send('/perm')
+    const permCard = transport.cards.at(-1)?.card
+    check('权限卡片有按钮', JSON.stringify(permCard).includes('permission.select'), JSON.stringify(permCard).slice(0, 100))
+    const permReply = await gateway.handleCardAction({ value: { action: 'permission.select', preset: 'read-only' }, messageId: 'om_perm_msg', chatId: CHAT, userId: USER })
+    check('回调切换了权限', plugin.calls.setPermission.at(-1)?.preset === 'read-only', JSON.stringify(plugin.calls.setPermission.at(-1)))
+    check('权限卡片也原地更新', transport.cardUpdates.at(-1)?.messageId === 'om_perm_msg')
+    check('返回权限提示', /权限已切换/.test(JSON.stringify(permReply)), JSON.stringify(permReply))
+
+    // 陌生人点卡片
+    const denied = await gateway.handleCardAction({ value: { action: 'model.select', provider: 'p1', model: 'm1' }, messageId: 'x', chatId: CHAT, userId: 'ou_stranger' })
+    check('非白名单被拒绝', /没有权限/.test(JSON.stringify(denied)), JSON.stringify(denied))
+  }
+
+  console.log('\n[26] /perm 文字兜底')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    await gateway.handleIncoming({ eventId: 'ev-perm-1', messageId: 'om-perm', chatId: CHAT, userId: USER, text: '建状态' })
+    await wait(5)
+    await gateway.handleIncoming({ eventId: 'ev-perm-2', messageId: 'om-perm2', chatId: CHAT, userId: USER, text: '/perm 2' })
+    await wait(5)
+    check('/perm 2 按编号切换', plugin.calls.setPermission.at(-1)?.preset === 'workspace-write', JSON.stringify(plugin.calls.setPermission.at(-1)))
+    check('回复了切换结果', /已切到/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
+
+    await gateway.handleIncoming({ eventId: 'ev-perm-3', messageId: 'om-perm3', chatId: CHAT, userId: USER, text: '/perm 不存在' })
+    await wait(5)
+    check('非法权限给提示', /没有这个权限/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
   }
 
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))

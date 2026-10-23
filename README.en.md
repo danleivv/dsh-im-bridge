@@ -153,10 +153,17 @@ The first message makes the plugin log the mapping to add to your config (see be
 |---|---|
 | `/status` (or `?status`) | what is running, background jobs, subagents, queue length, current model |
 | `/stop` | stop the running turn; its leftover output is dropped |
-| `/model` | list models; `/model 2` or `/model provider/model` to switch (takes effect next turn) |
+| `/model` | **model tabs** — one tap switches (or `/model provider/model`; takes effect next turn) |
+| `/perm` | **permission tabs**: full access / workspace write / read-only |
 | `/progress` | full event list for the current turn |
 | `/progress on` / `off` | progress card on/off (remembered per chat) |
 | `/help` | command reference |
+
+`/model` and `/perm` send one card each: **tap a button → the card turns into "switched" in place** — no
+numbers to remember, no second message.
+
+> A permission switch changes **the session itself**: tapping "read-only" on your phone also makes the
+> desktop side read-only right away.
 
 Only these are intercepted; something like `/etc/hosts` still goes to the agent.
 | `send me the artifacts` | the agent sends the files to the chat |
