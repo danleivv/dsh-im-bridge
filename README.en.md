@@ -130,11 +130,22 @@ never through a chat message, never as a command-line argument.
 > and run `dsh-feishu-setup-manual` to enter the credentials with hidden input. Both paths end in the
 > same local file.
 
-### 3. Restart DSH
+### 3. Enable card callbacks (only needed for the tab cards)
+
+`/model` and `/perm` send tappable cards. For taps to reach the plugin, subscribe the app to:
+
+```
+Event subscriptions → add event → card.action.trigger
+```
+
+Without it the plugin still works — those two cards just do nothing when tapped, and the text
+commands (`/model provider/model`, `/perm 2`) keep working.
+
+### 4. Restart DSH
 
 Credentials are read at plugin startup, so restart once.
 
-### 4. Send something in Feishu
+### 5. Send something in Feishu
 
 The first message makes the plugin log the mapping to add to your config (see below).
 
@@ -147,6 +158,8 @@ The first message makes the plugin log the mapping to add to your config (see be
 | `run today's render` | a turn starts, the reply arrives as a card |
 | another line while it runs | **inserted into that turn**, acknowledged at once |
 | `#summarise when this finishes` | queued; the running turn is left alone |
+| `send me the artifacts` | the agent sends the files to the chat |
+
 ### Commands
 
 | Command | What it does |
@@ -166,10 +179,19 @@ numbers to remember, no second message.
 > desktop side read-only right away.
 
 Only these are intercepted; something like `/etc/hosts` still goes to the agent.
-| `send me the artifacts` | the agent sends the files to the chat |
-
 
 Replies arrive as cards: bold, tables and code blocks render properly — including on the phone.
+
+### What the three permissions mean
+
+| Option | Meaning |
+|---|---|
+| **Full access** | every tool allowed, any path writable. Fastest for batch jobs, and the most dangerous |
+| **Workspace write** | can only change files inside the project; anything outside needs confirmation |
+| **Read-only** | no writes at all — every write asks you first |
+
+The switch is **session-wide**: change it on the phone and the desktop session uses the new policy
+immediately. After a batch job, tap "read-only" to tighten it again without going back to the desktop.
 
 ---
 
@@ -250,6 +272,11 @@ No. The plugin lives inside DSH; that is the price of sharing the same session.
 **Can I see tool-level progress on the phone?**
 Yes. Long turns get a card that updates in place, showing tool calls, subagents and elapsed time.
 `/progress off` stops it.
+
+**The tab cards do nothing when I tap them.**
+Card callbacks are not enabled. In the developer console → Event subscriptions → add
+`card.action.trigger`, then restart DSH. Text commands still work without it:
+`/model provider/model`, `/perm 2`.
 
 **Can one Feishu app serve several sessions?**
 No. One app is one long connection and one session; use one app per session.
