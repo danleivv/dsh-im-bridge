@@ -718,6 +718,73 @@ async function main() {
     check('非法权限给提示', /没有这个权限/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
   }
 
+  console.log('\n[27] 桌面端同步：默认关闭')
+  {
+    const { plugin, transport } = makeGateway()
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '电脑上说的话', time: Date.now() })
+    await wait(10)
+    check('默认不同步', transport.sent.length === 0, JSON.stringify(transport.sent.map((s) => s.text)))
+  }
+
+  console.log('\n[28] 开机消息不补发（历史重放保护）')
+  {
+    const { plugin, transport } = makeGateway({ mirrorDesktop: true })
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '很久以前的话', time: Date.now() - 3600_000 })
+    await wait(10)
+    check('旧消息不回显', transport.sent.length === 0, JSON.stringify(transport.sent.map((s) => s.text)))
+  }
+
+  console.log('\n[29] 开启后：桌面消息与回复都同步')
+  {
+    const { plugin, transport, gateway } = makeGateway({ mirrorDesktop: true })
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '把第三镜重拍一下', time: Date.now() })
+    await wait(10)
+    const notice = transport.sent.at(-1)?.text ?? ''
+    check('回显了桌面消息', /桌面端发来/.test(notice) && /第三镜/.test(notice), JSON.stringify(notice.slice(0, 60)))
+
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 950 })
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 950, text: '好，只重拍第三镜' })
+    await wait(10)
+    const reply = transport.sent.at(-1)?.text ?? ''
+    check('桌面轮次的回复也推送', /只重拍第三镜/.test(reply), JSON.stringify(transport.sent.map((s) => s.text).slice(-2)))
+
+    // 不是镜像轮次的桌面回复不推
+    const before = transport.sent.length
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 951, text: '这一轮不该推' })
+    await wait(10)
+    check('非镜像轮次不推', transport.sent.length === before, JSON.stringify(transport.sent.slice(before).map((s) => s.text)))
+
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 950 })
+  }
+
+  console.log('\n[30] /mirror 指令')
+  {
+    const saved = []
+    const { plugin, transport, gateway } = makeGateway({ saveMirrorPrefs: (prefs) => saved.push({ ...prefs }) })
+    const send = (text) => gateway.handleIncoming({ eventId: 'ev-mir-' + Math.random(), messageId: 'om-mir', chatId: CHAT, userId: USER, text })
+    const last = () => transport.sent.at(-1)?.text ?? ''
+
+    await send('/mirror')
+    check('默认状态是关闭', /已关闭/.test(last()), JSON.stringify(last()))
+
+    await send('/mirror on')
+    check('开启回执', /已开启桌面端同步/.test(last()), JSON.stringify(last()))
+    check('开关落盘', saved.at(-1)?.[CHAT] === true, JSON.stringify(saved.at(-1)))
+
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '开了之后说的话', time: Date.now() })
+    await wait(10)
+    check('开启后回显生效', /开了之后说的话/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
+
+    await send('/mirror off')
+    check('关闭回执', /已关闭桌面端同步/.test(last()), JSON.stringify(last()))
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '关了之后说的话', time: Date.now() })
+    await wait(10)
+    check('关闭后不再回显', !/关了之后说的话/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
+
+    await send('/mirror 乱写')
+    check('非法参数给用法', /用法/.test(last()), JSON.stringify(last()))
+  }
+
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
 
