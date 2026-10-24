@@ -197,6 +197,26 @@ up in Feishu:
 **Why off by default**: this pushes your desktop conversation onto Feishu's servers, where a company
 tenant may audit it. Turn it on when you need it; `/mirror off` turns it back off (remembered per chat).
 
+### How progress and mirroring work together
+
+They are two separate switches: `/progress` decides whether you see what is happening; `/mirror` decides
+whether desktop activity shows up in Feishu at all. **Progress never overrides mirroring** — with
+mirroring off, a desktop task shows nothing no matter how progress is set.
+
+| Message from | `/mirror` | `/progress` | What you see in Feishu |
+|---|---|---|---|
+| Feishu | off | off | the final reply |
+| Feishu | off | on | final reply + progress card |
+| Feishu | on | off | the final reply (mirroring has no effect here) |
+| Feishu | on | on | final reply + progress card |
+| desktop | off | off | nothing |
+| desktop | off | on | **nothing** |
+| desktop | on | off | your message + the final reply |
+| desktop | on | on | your message + progress card + the final reply |
+
+In one line: **Feishu-started turns follow `/progress` only; desktop-started turns follow `/mirror`
+first, and `/progress` only once mirroring is on.**
+
 ### What the three permissions mean
 
 | Option | Meaning |

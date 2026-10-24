@@ -501,20 +501,39 @@ async function main() {
     check('正式回复照常发出', replies.length === 1, JSON.stringify(transport.sent.map((s) => s.text)))
   }
 
-  console.log('\n[19] 桌面端发起的轮次也要推进度卡（同一会话）')
+  console.log('\n[19] 正交：桌面轮次的进度卡只在 mirror 开着时出现')
   {
-    const { plugin, transport } = makeGateway()
-    // 不调用 handleIncoming：模拟桌面端发起的轮次（state.inFlight 一直是 false）
-    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 600 })
+    // mirror 关（默认）：桌面轮次不建卡
+    const off = makeGateway()
+    off.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 600 })
     await wait(5)
-    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 600, callId: 'desk1', name: 'pwsh', description: 'Probe a four second 1080p video generation' })
-    await wait(30)
-    check('桌面端轮次也建卡', transport.cards.length === 1, String(transport.cards.length))
-    const content = transport.cards[0]?.card?.body?.elements?.[0]?.content ?? ''
-    check('卡片显示模型写的人话描述', content.includes('Probe a four second 1080p'), JSON.stringify(content.split('\n').slice(2, 4)))
-    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 600 })
-    await wait(30)
-    check('桌面端轮次结束也收尾', /✅ 完成/.test(String(transport.cardUpdates.at(-1)?.content)), JSON.stringify(String(transport.cardUpdates.at(-1)?.content).split('\n')[0]))
+    off.plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 600, callId: 'd1', name: 'pwsh', description: 'hidden work' })
+    await wait(40)
+    check('mirror 关：桌面轮次不建卡', off.transport.cards.length === 0, String(off.transport.cards.length))
+    off.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 600 })
+
+    // mirror 开：桌面轮次建卡
+    const on = makeGateway({ mirrorDesktop: true })
+    on.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 601 })
+    await wait(5)
+    on.plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 601, callId: 'd2', name: 'pwsh', description: 'visible work' })
+    await wait(40)
+    check('mirror 开：桌面轮次建卡', on.transport.cards.length === 1, String(on.transport.cards.length))
+    check('卡片内容正确', String(on.transport.cards[0]?.card?.body?.elements?.[0]?.content).includes('visible work'))
+    on.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 601 })
+  }
+
+  console.log('\n[19c] 飞书发起的轮次与 mirror 无关（只看 progress）')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    await gateway.handleIncoming({ eventId: 'ev-feishu-turn', messageId: 'om-feishu', chatId: CHAT, userId: USER, text: '飞书发起' })
+    await wait(5)
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 602 })
+    await wait(5)
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 602, callId: 'f1', name: 'pwsh', description: 'from feishu' })
+    await wait(40)
+    check('mirror 关也有卡（飞书发起）', transport.cards.length === 1, String(transport.cards.length))
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 602 })
   }
 
   console.log('\n[19b] 关掉 progressAllTurns 就只管飞书发起的轮次')
