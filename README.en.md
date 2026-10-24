@@ -170,7 +170,7 @@ The first message makes the plugin log the mapping to add to your config (see be
 | `/perm` | **permission tabs**: full access / workspace write / read-only |
 | `/progress` | full event list for the current turn |
 | `/progress on` / `off` | progress card on/off (remembered per chat) |
-| `/mirror on` / `off` | mirror the desktop conversation into Feishu (off by default) |
+| `/mirror on` / `off` | mirror the desktop conversation into Feishu (on by default) |
 | `/help` | command reference |
 
 `/model` and `/perm` send one card each: **tap a button → the card turns into "switched" in place** — no
@@ -185,8 +185,7 @@ Replies arrive as cards: bold, tables and code blocks render properly — includ
 
 ### Bring the desktop conversation to your phone
 
-Off by default. Send `/mirror on` once and what you type on the computer — plus the replies — shows
-up in Feishu:
+On by default: what you type on the computer — plus the replies — shows up in Feishu:
 
 ```
 📱 from the desktop
@@ -194,8 +193,8 @@ up in Feishu:
 > re-render shot 3, leave the first two alone
 ```
 
-**Why off by default**: this pushes your desktop conversation onto Feishu's servers, where a company
-tenant may audit it. Turn it on when you need it; `/mirror off` turns it back off (remembered per chat).
+**Heads-up**: this pushes your desktop conversation onto Feishu's servers, where a company tenant may
+audit it. Send `/mirror off` to stop it (remembered per chat, survives restarts).
 
 ### How progress and mirroring work together
 

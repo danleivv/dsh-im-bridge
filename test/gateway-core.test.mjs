@@ -503,8 +503,8 @@ async function main() {
 
   console.log('\n[19] 正交：桌面轮次的进度卡只在 mirror 开着时出现')
   {
-    // mirror 关（默认）：桌面轮次不建卡
-    const off = makeGateway()
+    // mirror 关：桌面轮次不建卡
+    const off = makeGateway({ mirrorDesktop: false })
     off.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 600 })
     await wait(5)
     off.plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 600, callId: 'd1', name: 'pwsh', description: 'hidden work' })
@@ -737,12 +737,12 @@ async function main() {
     check('非法权限给提示', /没有这个权限/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
   }
 
-  console.log('\n[27] 桌面端同步：默认关闭')
+  console.log('\n[27] 桌面端同步：默认开启')
   {
     const { plugin, transport } = makeGateway()
     plugin.emit({ event: 'user-message', sessionId: SESSION, text: '电脑上说的话', time: Date.now() })
     await wait(10)
-    check('默认不同步', transport.sent.length === 0, JSON.stringify(transport.sent.map((s) => s.text)))
+    check('默认就同步', transport.sent.length === 1 && /电脑上说的话/.test(transport.sent[0].text), JSON.stringify(transport.sent.map((s) => s.text)))
   }
 
   console.log('\n[28] 开机消息不补发（历史重放保护）')
@@ -784,21 +784,21 @@ async function main() {
     const last = () => transport.sent.at(-1)?.text ?? ''
 
     await send('/mirror')
-    check('默认状态是关闭', /已关闭/.test(last()), JSON.stringify(last()))
-
-    await send('/mirror on')
-    check('开启回执', /已开启桌面端同步/.test(last()), JSON.stringify(last()))
-    check('开关落盘', saved.at(-1)?.[CHAT] === true, JSON.stringify(saved.at(-1)))
-
-    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '开了之后说的话', time: Date.now() })
-    await wait(10)
-    check('开启后回显生效', /开了之后说的话/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
+    check('默认状态是开启', /已开启/.test(last()), JSON.stringify(last()))
 
     await send('/mirror off')
     check('关闭回执', /已关闭桌面端同步/.test(last()), JSON.stringify(last()))
+    check('开关落盘', saved.at(-1)?.[CHAT] === false, JSON.stringify(saved.at(-1)))
+
     plugin.emit({ event: 'user-message', sessionId: SESSION, text: '关了之后说的话', time: Date.now() })
     await wait(10)
     check('关闭后不再回显', !/关了之后说的话/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
+
+    await send('/mirror on')
+    check('开启回执', /已开启桌面端同步/.test(last()), JSON.stringify(last()))
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '开了之后说的话', time: Date.now() })
+    await wait(10)
+    check('重新开启后回显生效', /开了之后说的话/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text))
 
     await send('/mirror 乱写')
     check('非法参数给用法', /用法/.test(last()), JSON.stringify(last()))
