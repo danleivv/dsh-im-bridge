@@ -804,6 +804,27 @@ async function main() {
     check('非法参数给用法', /用法/.test(last()), JSON.stringify(last()))
   }
 
+  console.log('\n[31] 退出清理：dispose 会停掉进度卡定时器')
+  {
+    const { plugin, transport, gateway } = makeGateway()
+    await gateway.handleIncoming({ eventId: 'ev-disp-1', messageId: 'om-disp', chatId: CHAT, userId: USER, text: '跑个任务' })
+    await wait(5)
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 990 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 990, callId: 'x', name: 'pwsh', description: 'work' })
+    await wait(40)
+    check('先有进度卡', transport.cards.length === 1, String(transport.cards.length))
+
+    const state = [...gateway.chats.values()][0]
+    check('有定时器在跑', Boolean(state.progress?.heartbeatTimer), String(Boolean(state.progress?.heartbeatTimer)))
+
+    gateway.dispose()
+    check('dispose 后进度状态清空', state.progress === null, String(state.progress))
+
+    const before = transport.cardUpdates.length
+    await wait(120)
+    check('dispose 后不再更新卡片', transport.cardUpdates.length === before, String(transport.cardUpdates.length - before))
+  }
+
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
   process.exit(failures === 0 ? 0 : 1)
 
