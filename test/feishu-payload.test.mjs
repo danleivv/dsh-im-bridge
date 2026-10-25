@@ -9,7 +9,7 @@
  *
  * Run: node test/feishu-payload.test.mjs
  */
-import { buildMessagePayload, buildMarkdownCard, buildLegacyCard, hasMarkdownSyntax, splitMarkdownTables, normalizeFenceLanguages, MAX_CARD_TABLES } from '../lib/feishu-payload.mjs'
+import { buildMessagePayload, buildMarkdownCard, buildLegacyCard, hasMarkdownSyntax, splitMarkdownTables, normalizeFenceLanguages, sanitizeImages, MAX_CARD_TABLES } from '../lib/feishu-payload.mjs'
 
 let failures = 0
 const check = (label, ok, detail = '') => {
@@ -143,6 +143,23 @@ console.log('\n[11] 表格紧贴代码块：必须掰开')
   const guarded = normalizeFenceLanguages(noSep)
   check('未成表格时也插入空行', guarded.includes('| a | b |\n\n```'), JSON.stringify(guarded))
 }
+
+  console.log('\n[12] 卡片里不能留 markdown 图片语法')
+  {
+    // 真实事故：agent 写 ![图](runs/.../总览.jpg)，飞书 400 拒收整张卡片，
+    // 降级成纯文本后表格就散了。错误码 200570 "card contains invalid image keys"。
+    check('本地路径改成说明文字', sanitizeImages('![总览](runs/a.jpg)') === '🖼 总览（本地文件 runs/a.jpg，未发送到飞书）', sanitizeImages('![总览](runs/a.jpg)'))
+    check('远程图片改成链接', sanitizeImages('![图](https://x.com/a.png)') === '[图](https://x.com/a.png)', sanitizeImages('![图](https://x.com/a.png)'))
+    check('没有 alt 时兜底', sanitizeImages('![](runs/a.jpg)').includes('图片'), sanitizeImages('![](runs/a.jpg)'))
+    check('普通链接不受影响', sanitizeImages('[文档](https://x.com/d)') === '[文档](https://x.com/d)')
+    check('非字符串安全', sanitizeImages(null) === '')
+
+    const md = ['文字', '', '![图](runs/a.jpg)', '', '| a | b |', '|---|---|', '| 1 | 2 |'].join('\n')
+    const card = buildMarkdownCard(md)
+    const json = JSON.stringify(card)
+    check('卡片里没有图片语法', !/!\[/.test(json), JSON.stringify(json).slice(0, 120))
+    check('表格照常抽成组件', card.body.elements.some((e) => e.tag === 'table'), card.body.elements.map((e) => e.tag).join(','))
+  }
 
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
 process.exit(failures === 0 ? 0 : 1)

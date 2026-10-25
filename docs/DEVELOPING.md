@@ -81,6 +81,19 @@
 - 卡片构建在 `lib/cards.mjs`（纯函数，可单测）；权限目录解析在 `lib/permissions.mjs`
   （宿主的 `catalog` 是对象 `{ options: [{ value, name }] }`，**不是数组**——这个坑已经踩过一次）。
 
+**卡片里的图片**
+
+- 飞书卡片只认**已上传的图片 key**（img_v3_…）。写 URL 或本地路径都会触发
+
+  099 / 200570 card contains invalid image keys，整张卡片被拒收，
+
+  然后我们降级成纯文本——**表格和代码块一起没了**。
+
+- 所以 sanitizeImages() 会把图片语法先处理掉：http(s) 改成链接，本地路径改成说明文字。
+
+- 要让图片真的出现在卡片里，得先用 im.image.create 上传拿到 key，再拼进 markdown。
+
+
 **输出格式（表格）**
 
 - Agent 一律输出**标准 GFM 表格**：表头行 +
