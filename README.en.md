@@ -199,7 +199,7 @@ audit it. Send `/mirror off` to stop it (remembered per chat, survives restarts)
 ### How progress and mirroring work together
 
 They are two separate switches: `/progress` decides whether you see what is happening; `/mirror` decides
-whether desktop activity shows up in Feishu at all. **Progress never overrides mirroring** — with
+whether desktop activity shows up in Feishu at all. **Both are on by default.** Progress never overrides mirroring — with
 mirroring off, a desktop task shows nothing no matter how progress is set.
 
 | Message from | `/mirror` | `/progress` | What you see in Feishu |
@@ -315,7 +315,12 @@ Card callbacks are not enabled. In the developer console → Event subscriptions
 **Can one Feishu app serve several sessions?**
 No. One app is one long connection and one session; use one app per session.
 
-**Can someone else drive my bot?**
+**Why did the images in a reply not show up?**
+Feishu cards only accept images that were uploaded and have a key; any URL or local path makes the whole
+card fail. The plugin therefore rewrites `![img](path)` before sending: web images become clickable links,
+local paths become a one-line note. To actually see an image, have the agent send it with `feishu_send_file`.
+
+**The updater says the Host did not shut down gracefully?**\nThat means something held DSH open. Update to the latest plugin and restart once — the teardown path\n(Feishu connection, local port, timers) is fixed and now completes in milliseconds.\n\n**Can someone else drive my bot?**
 The first sender is bound automatically as the only allowed user; everyone else is ignored.
 
 **Where are the credentials?**
@@ -367,6 +372,8 @@ user** — clear `allowUsers` in `gateway.json` before handing the bot to someon
 - The progress card shows the latest 5 rows only; send `/progress` for the full list.
 - The progress card shows tool calls and timings, **not** the model's reasoning text.
 - Tool approval prompts appear on the desktop only; the phone will wait.
+- Images inside replies cannot be embedded: Feishu cards only accept uploaded images, so links and local
+  paths are rejected — images degrade to a link or a note. Use `feishu_send_file` to actually send one.
 - One Feishu app accepts one long-connection consumer; two consumers split the events.
 - One app maps to one session.
 - Status reactions (received / working / done) fail in some environments; replies are unaffected.
