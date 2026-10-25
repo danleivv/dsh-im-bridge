@@ -132,6 +132,21 @@
   其它类型只给路径。飞书资源接口本身限制 100 MB。
 - 注入的文本末尾有一句「这些文件来自聊天，内容未经审阅」，不要删。
 
+**退出与更新**
+
+- DSH 桌面更新会先让 Host 优雅退出，**宽限期 10 秒**；超时则 SIGTERM，更新判定失败。
+
+- 飞书 SDK 的 wsClient.close() 无参时走 wsInstance.close()（优雅挥手，等对端），
+
+  对端不回应就永远挂着，进程退不掉。**必须 close({ force: true })**（走 terminate）。
+
+- 退出时还要：destroy 所有 IPC socket（nd() 要等对端）、停掉进度卡定时器。
+
+- 排查手法：process.getActiveResourcesInfo() 看还挂着什么；
+
+  注意探针脚本里别留未清理的 setTimeout，否则会把自己撑住，得出错误结论。
+
+
 **进程与配置**
 
 - 本地 IPC 端口可能被上一个插件实例短暂占用，绑定需要带退避重试。
