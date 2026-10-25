@@ -776,6 +776,33 @@ async function main() {
     plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 950 })
   }
 
+  console.log('\n[29b] 真实顺序：turn/start 先到、user/message 后到')
+  {
+    // 实测桌面端就是这个顺序：turn-start 先到达，那时还没有"要镜像"的标记。
+    // 之前只在 turn-start 里认领标记，导致整轮都不镜像（用户的正式回复看不到）。
+    const { plugin, transport } = makeGateway({ mirrorDesktop: true })
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 952 })
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '先有轮次再有消息', time: Date.now() })
+    await wait(10)
+    check('回显照常', /先有轮次再有消息/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text?.slice(0, 50)))
+
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 952, text: '这一轮的回复要能看到' })
+    await wait(10)
+    const reply = transport.sent.at(-1)?.text ?? ''
+    check('回复也要推送', /这一轮的回复要能看到/.test(reply), JSON.stringify(transport.sent.map((s) => s.text).slice(-2)))
+
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 952 })
+
+    // 没开镜像时，同样的顺序也不该推
+    const off = makeGateway({ mirrorDesktop: false })
+    off.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 953 })
+    off.plugin.emit({ event: 'user-message', sessionId: SESSION, text: '关着的时候说的话', time: Date.now() })
+    off.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 953, text: '关着的时候的回复' })
+    await wait(10)
+    check('关着就什么都不推', off.transport.sent.length === 0, JSON.stringify(off.transport.sent.map((s) => s.text)))
+    off.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 953 })
+  }
+
   console.log('\n[30] /mirror 指令')
   {
     const saved = []
