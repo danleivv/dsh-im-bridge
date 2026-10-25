@@ -134,12 +134,23 @@
 
 **退出与更新**
 
-- DSH 桌面更新会先让 Host 优雅退出，**宽限期 10 秒**；超时则 SIGTERM，更新判定失败。
-- 飞书 SDK 的 `wsClient.close()` 无参时走 `wsInstance.close()`（优雅挥手，等对端回应），
-  对端不回应就永远挂着，进程退不掉。**必须 `close({ force: true })`**（走 `terminate()`）。
-- 退出时还要：destroy 所有 IPC socket（`end()` 要等对端配合）、停掉进度卡定时器。
-- 排查手法：`process.getActiveResourcesInfo()` 看还挂着什么资源；
-  注意探针脚本里别留未清理的 `setTimeout`，否则会把自己撑住，得出错误结论（踩过）。
+DSH 桌面更新会先让 Host 优雅退出，**宽限期 10 秒**；超时则 SIGTERM，更新判定失败。
+这条路径修过多次，每次都是"清理被某一步中断，长连接没关掉"，四个要点：
+
+- 飞书连接必须 `close({ force: true })`：无参版本走 `wsInstance.close()`（优雅挥手，等对端回应），
+  对端不回应就永远挂着。
+- IPC socket 要 `destroy()`，不是 `end()`（`end()` 要等对端配合）。
+- **不要 `ctx.off(事件名)`**：只给名字不给函数会卡住不返回，清理就停在那行。
+  改用注册时 `ctx.on(...)` 返回的句柄。
+- 作用域：清理函数里引用的变量必须同层声明（曾因 `ipcSockets` 声明在 `if` 块里抛
+  ReferenceError，清理中断）。
+
+改动退出逻辑前后跑一次 `node tools/lifecycle-check.mjs`：它用假上下文真实加载插件，
+跑"启动 → 退出"，正常输出 `teardown: clean in Nms` 并立即退出（code=0）。
+
+正常退出只写一行摘要；超过 300ms 或出错才展开逐步耗时与残留资源
+（`process.getActiveResourcesInfo()`）。写这类探针时注意：**别留未清理或未 unref 的定时器**，
+否则测出来的"进程不退出"是探针自己造成的（踩过三次）。
 
 **进程与配置**
 
