@@ -803,6 +803,42 @@ async function main() {
     off.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 953 })
   }
 
+  console.log('\n[29c] 飞书中途插话不能被回显成"桌面端发来"')
+  {
+    // 用户实测：20:41 从飞书发了一条中途插话，飞书里却收到"桌面端发来"的回显。
+    // 原因是 steer 注入的载荷没登记 rpcId，回显环节认不出是自己发的。
+    const { plugin, transport, gateway } = makeGateway({ mirrorDesktop: true })
+
+    // 先让这一轮跑起来，使网关判定为 busy（中途插话的前提）
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 960 })
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 960, text: '正在干活' })
+    await wait(10)
+
+    transport.sent.length = 0
+    await gateway.handleIncoming({
+      eventId: 'ev-steer-1',
+      messageId: 'om-steer-1',
+      chatId: CHAT,
+      userId: USER,
+      text: '改成竖屏，别用横屏',
+    })
+    await wait(20)
+    check('确实是 steer 注入', plugin.calls.steer.length > 0, JSON.stringify(plugin.calls.steer.slice(-1)))
+
+    // 系统把这句话作为 user/message 事件回放出来（就是回环的来源）
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '改成竖屏，别用横屏', rpcId: 'r-steer-1', time: Date.now() })
+    await wait(20)
+    const echoed = transport.sent.map((s) => s.text).join('\n')
+    check('不回显自己的话', !/桌面端发来/.test(echoed), JSON.stringify(transport.sent.map((s) => s.text)))
+
+    // 但真正的桌面输入仍然要回显
+    plugin.emit({ event: 'user-message', sessionId: SESSION, text: '桌面上另外说的话', rpcId: 'r-desk-1', time: Date.now() })
+    await wait(20)
+    check('真实桌面输入仍然回显', /桌面上另外说的话/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text?.slice(0, 50)))
+
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 960 })
+  }
+
   console.log('\n[30] /mirror 指令')
   {
     const saved = []
