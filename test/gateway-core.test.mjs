@@ -486,6 +486,38 @@ async function main() {
     check('没有重复建卡', transport.cards.length === 1, String(transport.cards.length))
   }
 
+  console.log('\n[17d] 并发刷新只能建一张进度卡')
+  {
+    // 用户实测：飞书里每次出现两张进度卡，第一张只显示一条就不动了。
+    // 成因：建卡是异步的，第一张还没建好时又来了一次刷新，两次都看到"还没有卡"，
+    // 各建一张；后建的覆盖 messageId，先建的那张从此没人更新。
+    const { plugin, transport, gateway } = makeGateway()
+    await gateway.handleIncoming({ eventId: 'ev-card-1', messageId: 'om-card-1', chatId: CHAT, userId: USER, text: '跑个长任务' })
+    await wait(5)
+    transport.cards.length = 0
+
+    // 让建卡变慢，才能把"两次刷新撞在一起"这个窗口打开
+    const originalCreate = transport.port.createCard
+    transport.port.createCard = async (args) => {
+      await wait(40)
+      return originalCreate(args)
+    }
+
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 980 })
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 980, callId: 'c1', name: 'pwsh', description: '第一条' })
+    await wait(15) // 第一次刷新已经进到 createCard 里了
+    plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 980, callId: 'c2', name: 'pwsh', description: '第二条' })
+    await wait(150)
+
+    check('只建了一张卡', transport.cards.length === 1, String(transport.cards.length))
+    check(
+      '所有更新都打在那一张上',
+      transport.cardUpdates.length > 0 && transport.cardUpdates.every((update) => update.messageId === 'om_progress_1'),
+      JSON.stringify(transport.cardUpdates.map((update) => update.messageId)),
+    )
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 980 })
+  }
+
   console.log('\n[18] 进度卡片不影响正式回复')
   {
     const { plugin, transport, gateway } = makeGateway()
