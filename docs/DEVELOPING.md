@@ -164,6 +164,18 @@ DSH 桌面更新会先让 Host 优雅退出，**宽限期 10 秒**；超时则 S
 
 修改本插件时用本地链接安装，改完代码重启 DSH 即可生效（ESM 模块会被缓存）。
 
+**推送不通时**（本机实测 22 端口常被阻断）：全局 `core.sshCommand` 里写死了 `-p 22`，
+它会盖掉 `~/.ssh/config`，所以改 config 没用。应急通道：
+
+```bash
+GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new -p 443' \
+  git push ssh://git@ssh.github.com:443/danleivv/dsh-im-bridge.git main:main
+```
+
+推完用 `git ls-remote https://github.com/danleivv/dsh-im-bridge.git refs/heads/main`
+核对远端哈希（HTTPS 走代理比 SSH 稳）。注意：这样推不会更新本地的 `origin/main` 引用，
+必要时 `git update-ref refs/remotes/origin/main <hash>` 对齐，否则 `git status` 会误报"未推送"。
+
 编辑当前 profile（`~/.dsh/profiles/<name>/package.json`），两处都要有：
 
 ```json
