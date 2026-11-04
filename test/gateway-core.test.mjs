@@ -518,6 +518,30 @@ async function main() {
     plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 980 })
   }
 
+  console.log('\n[17e] 进度卡连续失败后熔断，不再狂刷请求')
+  {
+    // 线上事故：内容被飞书永久拒绝（比如混进图片语法）时，卡片会以 1.5 秒节奏
+    // 无限重试，累计刷出 56,326 次无效请求，把日志也淹了。
+    const { plugin, transport, gateway, logs } = makeGateway()
+    await gateway.handleIncoming({ eventId: 'ev-fuse-1', messageId: 'om-fuse-1', chatId: CHAT, userId: USER, text: '跑个任务' })
+    await wait(5)
+
+    let attempts = 0
+    transport.port.createCard = async () => { attempts++; return 'om_fuse_card' }
+    transport.port.updateCard = async () => { attempts++; throw new Error('Request failed with status code 400') }
+
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 990 })
+    for (let i = 0; i < 12; i++) {
+      plugin.emit({ event: 'tool-call', sessionId: SESSION, turn: 990, callId: 'f' + i, name: 'pwsh', description: '第 ' + i + ' 条' })
+      await wait(30)
+    }
+    await wait(200)
+
+    check('尝试次数有上限', attempts <= 12, String(attempts))
+    check('熔断后打了日志', logs.some((line) => /abandoned/.test(line)), JSON.stringify(logs.filter((l) => /progress card/.test(l)).slice(-2)))
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 990 })
+  }
+
   console.log('\n[18] 进度卡片不影响正式回复')
   {
     const { plugin, transport, gateway } = makeGateway()
@@ -869,6 +893,46 @@ async function main() {
     check('真实桌面输入仍然回显', /桌面上另外说的话/.test(transport.sent.at(-1)?.text ?? ''), JSON.stringify(transport.sent.at(-1)?.text?.slice(0, 50)))
 
     plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 960 })
+  }
+
+  console.log('\n[29d] 中途插话后，这一轮的回复必须推送（goal 续跑场景）')
+  {
+    // 真实事故：13:58 之后消息都走 steer，桥接只回"已接收"，正式回复一条没有。
+    // 原因：steer 成功分支只 ack、不置 inFlight，后续 assistant 输出被
+    // `!state.inFlight` 全部挡掉。没开 goal 时下一轮靠新 prompt 恢复，所以看不出问题。
+    const { plugin, transport, gateway } = makeGateway({ deliver: 'live' })
+
+    // 第一轮：正常 prompt，回复正常
+    await gateway.handleIncoming({ eventId: 'ev-g1', messageId: 'om-g1', chatId: CHAT, userId: USER, text: '第一句' })
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1413 })
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1413, text: '第一轮回复' })
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1413 })
+    await wait(10)
+    check('第一轮有回复', /第一轮回复/.test(transport.sent.map((s) => s.text).join('\n')), JSON.stringify(transport.sent.map((s) => s.text)))
+
+    // 第二轮开始跑（goal 续跑），此时用户发消息 → 走 steer
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1414 })
+    await wait(5)
+    const before = transport.sent.length
+    await gateway.handleIncoming({ eventId: 'ev-g2', messageId: 'om-g2', chatId: CHAT, userId: USER, text: '插一句话' })
+    await wait(10)
+    check('先回了 ack', transport.sent.slice(before).some((s) => /已接收/.test(s.text)), JSON.stringify(transport.sent.slice(before).map((s) => s.text)))
+    check('确实走了 steer', plugin.calls.steer.length > 0, String(plugin.calls.steer.length))
+
+    // 这一轮继续输出并结束 —— 之前这里发不出去
+    transport.sent.length = 0
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1414, text: '插话之后这一轮的回复' })
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1414 })
+    await wait(15)
+    check('插话后的回复也推送', /插话之后这一轮的回复/.test(transport.sent.map((s) => s.text).join('\n')), JSON.stringify(transport.sent.map((s) => s.text)))
+
+    // goal 继续自动续跑下一轮，仍然要推送
+    transport.sent.length = 0
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1415 })
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1415, text: '续跑下一轮的回复' })
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1415 })
+    await wait(15)
+    check('goal 续跑的下一轮也推送', /续跑下一轮的回复/.test(transport.sent.map((s) => s.text).join('\n')), JSON.stringify(transport.sent.map((s) => s.text)))
   }
 
   console.log('\n[30] /mirror 指令')

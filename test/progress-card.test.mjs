@@ -104,5 +104,17 @@ console.log('\n[7] 边界')
   check('结束后的调用不再记录', done.entries.length === 0)
 }
 
+console.log('\n[图片语法] 进度卡里不能留 markdown 图片语法')
+{
+  // 飞书卡片只认已上传的图片 key：内容里混进 ![..](..) 会让整张卡片 400，
+  // 且失败是持久的——线上因此累计了 5 万次无效更新。
+  const progress = createProgress(1416)
+  recordToolCall(progress, { name: 'write', callId: 'c1', args: {}, description: '看图 ![总览](runs/a/总览.jpg) 写文档' })
+  const card = renderProgressCard(progress, { final: false, lang: 'zh' })
+  const content = card.body.elements[0].content
+  check('卡片里没有图片语法', !/!\[/.test(content), JSON.stringify(content.slice(0, 90)))
+  check('工具描述仍然保留', /写文档/.test(content), JSON.stringify(content.slice(0, 90)))
+}
+
 console.log('\n' + (failures === 0 ? '全部通过 ✅' : failures + ' 项失败 ❌'))
 process.exit(failures === 0 ? 0 : 1)
