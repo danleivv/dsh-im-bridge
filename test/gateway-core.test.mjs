@@ -935,6 +935,44 @@ async function main() {
     check('goal 续跑的下一轮也推送', /续跑下一轮的回复/.test(transport.sent.map((s) => s.text).join('\n')), JSON.stringify(transport.sent.map((s) => s.text)))
   }
 
+console.log('\n[29e] goal 从普通 prompt 起跑、用户全程没插话，续跑轮次也要推送')
+  {
+    // 线上事故：19:12 起 goal 从 prompt 那轮自动续跑，1819–1822 共 4 轮 97 条消息
+    // 全部没推到飞书，直到 20:35 用户插了一句话才恢复。
+    // 原因：续跑判定只认"用户插过话"，而这次用户一声没吭。
+    const { plugin, transport, gateway } = makeGateway({ deliver: 'live' })
+
+    await gateway.handleIncoming({ eventId: 'ev-h1', messageId: 'om-h1', chatId: CHAT, userId: USER, text: '把这个拍出来，立个目标' })
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1818 })
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1818, text: '收到，开始干' })
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1818 })
+    await wait(10)
+    check('起跑轮有回复', /开始干/.test(transport.sent.map((s) => s.text).join('\n')), JSON.stringify(transport.sent.map((s) => s.text)))
+
+    // goal 在同一毫秒续跑，用户全程不说话
+    for (const nextTurn of [1819, 1820, 1821, 1822]) {
+      transport.sent.length = 0
+      plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: nextTurn })
+      plugin.emit({ event: 'assistant', sessionId: SESSION, turn: nextTurn, text: '第 ' + nextTurn + ' 轮的进展' })
+      plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: nextTurn })
+      await wait(15)
+      check(
+        '第 ' + nextTurn + ' 轮也推送',
+        transport.sent.map((s) => s.text).join('\n').includes('第 ' + nextTurn + ' 轮的进展'),
+        JSON.stringify(transport.sent.map((s) => s.text)),
+      )
+    }
+
+    // 链条断掉后，不应把很久之后的轮次当成续跑
+    await wait(6000)
+    transport.sent.length = 0
+    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1900 })
+    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1900, text: '很久之后的桌面轮次' })
+    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1900 })
+    await wait(15)
+    check('超时后不再接管', transport.sent.length === 0, JSON.stringify(transport.sent.map((s) => s.text)))
+  }
+
   console.log('\n[30] /mirror 指令')
   {
     const saved = []
