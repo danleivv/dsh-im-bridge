@@ -973,6 +973,44 @@ console.log('\n[29e] goal 从普通 prompt 起跑、用户全程没插话，续�
     check('超时后不再接管', transport.sent.length === 0, JSON.stringify(transport.sent.map((s) => s.text)))
   }
 
+console.log('\n[29f] 桌面镜像轮次后面的 goal 续跑也要推送；mirror 关掉则不跟随')
+  {
+    // 线上事故：22:37:59 turn 1829（桌面端发起、靠镜像推送）结束后，goal 续跑出
+    // turn 1830，从 22:38 起所有输出都没到飞书。原因是武装"继续跟随"只写在
+    // isOurs（飞书发起的轮次）分支里，镜像轮次走不到。
+    const on = makeGateway({ mirrorDesktop: true, deliver: 'live' })
+    on.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1829 })
+    on.plugin.emit({ event: 'user-message', sessionId: SESSION, text: '桌面上说的话', time: Date.now() })
+    on.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1829, text: '镜像轮的回复' })
+    await wait(10)
+    on.transport.sent.length = 0
+
+    // goal 立刻续跑
+    on.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1829 })
+    on.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1830 })
+    on.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1830, text: '续跑轮的进展' })
+    await wait(15)
+    check(
+      '镜像轮的后续续跑也推送',
+      on.transport.sent.map((s) => s.text).join('\n').includes('续跑轮的进展'),
+      JSON.stringify(on.transport.sent.map((s) => s.text)),
+    )
+    on.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1830 })
+
+    // mirror 关掉：桌面轮次不推送，也就不该跟随它的续跑（否则等于泄露桌面活动）
+    const off = makeGateway({ mirrorDesktop: false, deliver: 'live' })
+    off.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1831 })
+    off.plugin.emit({ event: 'user-message', sessionId: SESSION, text: '关着的时候说的话', time: Date.now() })
+    off.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1831, text: '关着时候的回复' })
+    await wait(10)
+    off.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1831 })
+    off.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1832 })
+    off.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1832, text: '不该出现的续跑' })
+    await wait(15)
+    check('mirror 关：续跑不推送', off.transport.sent.length === 0, JSON.stringify(off.transport.sent.map((s) => s.text)))
+    off.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1832 })
+  }
+
   console.log('\n[30] /mirror 指令')
   {
     const saved = []
