@@ -963,14 +963,16 @@ console.log('\n[29e] goal 从普通 prompt 起跑、用户全程没插话，续�
       )
     }
 
-    // 链条断掉后，不应把很久之后的轮次当成续跑
+    // 链条断掉后不应被 goalFollow 接管。
+    // 注意要用 mirror 关的实例判断：mirror 开着时，任何非飞书轮次本来就会被镜像
+    // （那是 mirror 的语义），用它测"不劫持"会得到错误结论。
     await wait(6000)
-    transport.sent.length = 0
-    plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1900 })
-    plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1900, text: '很久之后的桌面轮次' })
-    plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1900 })
+    const closed = makeGateway({ deliver: 'live', mirrorDesktop: false })
+    closed.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1900 })
+    closed.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1900, text: '很久之后的桌面轮次' })
+    closed.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1900 })
     await wait(15)
-    check('超时后不再接管', transport.sent.length === 0, JSON.stringify(transport.sent.map((s) => s.text)))
+    check('超时后不再接管', closed.transport.sent.length === 0, JSON.stringify(closed.transport.sent.map((s) => s.text)))
   }
 
 console.log('\n[29f] 桌面镜像轮次后面的 goal 续跑也要推送；mirror 关掉则不跟随')
@@ -1009,6 +1011,42 @@ console.log('\n[29f] 桌面镜像轮次后面的 goal 续跑也要推送；mirro
     await wait(15)
     check('mirror 关：续跑不推送', off.transport.sent.length === 0, JSON.stringify(off.transport.sent.map((s) => s.text)))
     off.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1832 })
+  }
+
+console.log('\n[29g] 自主轮次（后台任务/gool 完成自动续跑）也要推送')
+  {
+    // 线上事故：11-16 18:43 turn 1913 由 tool-jobs（后台任务完成通知）自动开启，
+    // 没有任何"人说话"的事件，mirrorPending 永远为假，整轮 9 条输出全丢。
+    const on = makeGateway({ mirrorDesktop: true, deliver: 'live' })
+    on.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1913 })
+    on.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1913, text: '找到一个大问题，上游数据错' })
+    await wait(10)
+    check(
+      '自主轮次的输出也推送',
+      on.transport.sent.map((s) => s.text).join('\n').includes('上游数据错'),
+      JSON.stringify(on.transport.sent.map((s) => s.text)),
+    )
+    on.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1913 })
+
+    // mirror 关掉：自主轮次不推送（否则等于把桌面活动泄露到飞书）
+    const off = makeGateway({ mirrorDesktop: false, deliver: 'live' })
+    off.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1914 })
+    off.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1914, text: '关着时候的自主输出' })
+    await wait(10)
+    check('mirror 关：自主轮次不推送', off.transport.sent.length === 0, JSON.stringify(off.transport.sent.map((s) => s.text)))
+    off.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1914 })
+
+    // 飞书发起的轮次不受影响：照常推送（一次，不重复）
+    const feishu = makeGateway({ mirrorDesktop: true, deliver: 'live' })
+    await feishu.gateway.handleIncoming({ eventId: 'ev-g7', messageId: 'om-g7', chatId: CHAT, userId: USER, text: '飞书上问一句' })
+    await wait(5)
+    feishu.transport.sent.length = 0
+    feishu.plugin.emit({ event: 'turn-start', sessionId: SESSION, turn: 1915 })
+    feishu.plugin.emit({ event: 'assistant', sessionId: SESSION, turn: 1915, text: '飞书轮次的回复' })
+    await wait(10)
+    const replies = feishu.transport.sent.filter((s) => /飞书轮次的回复/.test(s.text))
+    check('飞书轮次只推一条', replies.length === 1, String(replies.length))
+    feishu.plugin.emit({ event: 'turn-end', sessionId: SESSION, turn: 1915 })
   }
 
   console.log('\n[30] /mirror 指令')
